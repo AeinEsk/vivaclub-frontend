@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    .header {
+        @apply flex items-center justify-between p-4 md:p-6 bg-white/80 backdrop-blur-lg sticky top-0 z-10 border-b border-gray-100;
+    }
+
+    .nav-button {
+        @apply p-2 hover:bg-gray-100 rounded-xl transition-colors duration-200 text-text-secondary;
+    }
+
+    .table-container {
+        @apply bg-white rounded-2xl shadow-[0_0_50px_0_rgba(0,0,0,0.05)] mx-auto overflow-hidden border border-gray-100;
+    }
+
+    .table-header {
+        @apply bg-gray-50/50 text-sm font-medium text-text-secondary px-3 md:px-6 py-3 md:py-4;
+    }
+
+    .table-row {
+        @apply hover:bg-gray-50/50 transition-colors duration-200;
+    }
+
+    .table-cell {
+        @apply px-3 md:px-6 py-4 md:py-5 text-sm whitespace-nowrap transition-colors duration-150;
+    }
+
+    .draw-icon {
+        @apply w-8 h-8 rounded-xl bg-gradient-to-r from-violet-50 to-indigo-50 flex items-center justify-center text-violet-600;
+    }
+
+    .status-badge {
+        @apply inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium
+             bg-gradient-to-r from-violet-50 to-indigo-50 text-violet-700;
+    }
+
+    .add-button {
+        @apply flex items-center justify-center shrink-0 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white gap-2
+             hover:from-violet-700 hover:to-indigo-700 transition-all duration-200 font-medium text-sm md:text-base
+             shadow-[0_4px_20px_-5px_rgba(79,70,229,0.4)] hover:shadow-[0_4px_25px_-5px_rgba(79,70,229,0.5)];
+    }
+
+    .status-icon-wrapper {
+        @apply min-h-4 min-w-4 rounded-full p-1.5;
+    }
+
+    .status-icon-wrapper.active {
+        @apply bg-green-500;
+    }
+
+    .status-icon-wrapper.inactive {
+        @apply bg-red-500;
+    }
+
+    .status-icon {
+        @apply w-3 h-3 text-white;
+    }
+
+    .menu-button {
+        @apply text-gray-400 hover:text-gray-600 p-2 rounded-xl hover:bg-gray-50 transition-all duration-200;
+    }
+
+    .input[type='text']:focus,
+    .input[type='email']:focus,
+    .input[type='password']:focus,
+    .input[type='datetime-local']:focus,
+    .input[type='number']:focus,
+    textarea:focus,
+    select:focus {
+        border-color: theme('colors.bg-secondary') !important;
+        outline-color: theme('colors.bg-secondary') !important;
+    }
+}
+
+@layer utilities {
+    .input-bordered,
+    .select-bordered {
+        border-color: theme('colors.border');
+    }
+
+    .label-text {
+        @apply flex items-center gap-[5px];
+    }
+
+    .btn-primary {
+        @apply bg-gradient-to-r from-violet-600 to-indigo-600;
+        color: white;
+
+        &:disabled {
+            background: #e5e5e5;
+        }
+    }
+
+    .btn-outline.btn-primary {
+        @apply bg-none bg-white text-bg-secondary hover:bg-bg-secondary hover:text-white;
+    }
+
+    .primary-divider {
+        @apply border-t border-bg-secondary opacity-30 my-6;
+    }
+
+    .bg-primary-gradient {
+        @apply bg-gradient-to-r from-violet-600 to-indigo-600;
+    }
+}
