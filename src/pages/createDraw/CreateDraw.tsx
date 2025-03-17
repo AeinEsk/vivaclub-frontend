@@ -35,8 +35,8 @@ const schema = z.object({
     timezone: z.string().nonempty('Required'),
     currency: z.string().nonempty('Required'),
     discounts: z.array(z.object({
-        type: z.string().nonempty('Discount Type is required'),
-        code: z.string().nonempty('Discount Code is required')
+        type: z.string(),
+        code: z.string()
     })).optional()
 });
 
@@ -115,7 +115,6 @@ const CreateDraw = () => {
     });
 
     const onSubmit = async (data: FormData) => {
-        console.log('Form submitted with data:', data);
         try {
             setLoading(true);
             setError('');
@@ -126,7 +125,6 @@ const CreateDraw = () => {
                 discounts: discountItems
             };
 
-            console.log('Sending data to API:', formDataWithDiscounts);
 
             const response = await createDraw(formDataWithDiscounts);
             console.log('API Response:', response);

@@ -24,6 +24,7 @@ import ProtectedRoute from '../guards/AuthGuards';
 import GuestGuard from '../guards/GuestGuard';
 import CustomerVerification from '../pages/customerVerification/CustomerVerification';
 import CustomerPortal from '../pages/customerPortal/CustomerPortal';
+import CustomerSignIn from '../pages/customerSignIn/CustomerSignIn';
 
 const Router = () => {
     return (
@@ -239,7 +240,16 @@ const Router = () => {
                     </Header>
                 }
             />
-            
+
+            <Route
+                path={PATHS.CUSTOMER_SIGNIN}
+                element={
+                    <Header title="Sign In">
+                        <CustomerSignIn />
+                    </Header>
+                }
+            />
+
             <Route
                 path="*"
                 element={

@@ -5,7 +5,7 @@ const OTP_LOGIN = '/auth/login-otp';
 const OTP_REGISTER = '/auth/register';
 const PAYMENT_OTP = '/auth/customer/otp';
 const CUSTOMER_OTP = '/auth/customer/otp';
-const CUSTOMER_VERIFY = '/auth/customer/verify';
+const CUSTOMER_VERIFY = '/auth/customer/verify-otp';
 
 export const otpRequest = (email: string) => {
     const payload = { username: email };
@@ -36,13 +36,13 @@ export const paymentOtpRequest = (email: string) => {
 
 export const customerOtpRequest = (email: string) => {
     return axiosInstance.post(CUSTOMER_OTP, { 
-        email,
+        username:email,
     });
 };
 
 export const verifyCustomerOtp = (email: string, otp: string, sessionId: string) => {
     return axiosInstance.post(CUSTOMER_VERIFY, { 
-        email, 
+        username:email, 
         otp,
         sessionId,
     });

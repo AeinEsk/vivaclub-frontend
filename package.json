@@ -33,7 +33,7 @@
     "@vitejs/plugin-react": "^4.0.0",
     "autoprefixer": "^10.4.20",
     "daisyui": "^4.12.10",
-    "eslint": "^9.10.0",
+    "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.30.0",
     "eslint-plugin-jsx-a11y": "^6.10.0",

@@ -23,5 +23,6 @@ export const PATHS = {
     PRIVACY: '/privacy-policy',
     RESET_PASS: '/forgot-password/:email',
     CUSTOMER_VERIFICATION: '/verify-customer',
-    CUSTOMER_PORTAL: '/customer-portal'
+    CUSTOMER_PORTAL: '/customer-portal',
+    CUSTOMER_SIGNIN: '/customer-signin'
 };

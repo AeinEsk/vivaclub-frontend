@@ -43,6 +43,7 @@ const DrawInfo = () => {
     const [imageUrl, setImageUrl] = useState<string>();
     const [imgLoading, setImgLoading] = useState(true);
     const [imgError, setImgError] = useState<boolean>(false);
+    const [showFullImage, setShowFullImage] = useState(false);
     const today = new Date();
     const formattedDate = today.toISOString();
 
@@ -97,6 +98,21 @@ const DrawInfo = () => {
                     <Loading />
                 ) : (
                     <div className="flex flex-col items-center justify-center">
+                        {/* Simple Image Modal */}
+                        {showFullImage && (
+                            <div 
+                                className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+                                onClick={() => setShowFullImage(false)}
+                            >
+                                <img
+                                    src={imageUrl}
+                                    alt="draw image"
+                                    className="max-w-[95vw] max-h-[95vh]"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            </div>
+                        )}
+
                         <div className="card p-0 w-full max-w-sm shadow-xl border border-border/30 bg-white overflow-hidden">
                             <header className="bg-primary-gradient px-3 py-5 text-left">
                                 <p className="text-white font-bold mb-1">Draw Info</p>
@@ -115,12 +131,13 @@ const DrawInfo = () => {
                                             <img
                                                 src={imageUrl}
                                                 alt="draw image"
-                                                className={`border border-gray-50 rounded-lg text-center ${imgLoading ? 'hidden' : 'block'} w-full h-[200px] object-cover max-w-full max-h-full`}
+                                                className={`border border-gray-50 rounded-lg text-center ${imgLoading ? 'hidden' : 'block'} w-full h-[200px] object-cover max-w-full max-h-full cursor-pointer`}
                                                 onLoad={() => setImgLoading(false)}
                                                 onError={() => {
                                                     setImgLoading(false);
                                                     setImgError(true);
                                                 }}
+                                                onClick={() => setShowFullImage(true)}
                                             />
                                         </div>
                                         {imgError && (

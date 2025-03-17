@@ -106,16 +106,20 @@ const Payment = () => {
                             <p className={GRID_VALUE_CLASS}>{count && count}</p>
                         </div>
 
-                        <button className="mt-7 btn btn-primary w-full">
+                        <button className="mt-7 btn btn-primary w-full"
+                            onClick={() => navigate(`${PATHS.CUSTOMER_VERIFICATION}?email=${email}`)}
+                        >
                             Go to Customer Portal
                         </button>
-                        <button
-                            onClick={() =>
-                                navigate(PATHS.DRAW_INFO.replace(':drawId', drawID || ''))
-                            }
-                            className="mt-5 btn w-full">
-                            Back to Draws
-                        </button>
+                        {!membershipTireId && (
+                            <button
+                                onClick={() => navigate(PATHS.DRAW_INFO.replace(':drawId', drawID || ''))}
+
+                                className="mt-5 btn w-full"
+                            >
+                                Back to Draws
+                            </button>
+                        )}
                     </div>
                 );
             case 'error':

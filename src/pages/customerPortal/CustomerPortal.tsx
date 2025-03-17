@@ -40,21 +40,29 @@ const CustomerPortal = () => {
     });
 
     useEffect(() => {
-        const email = location.state?.email;
-        if (!email) {
-            navigate(PATHS.SIGNIN);
+        const token = localStorage.getItem('customerToken');
+        if (!token) {
+            navigate(PATHS.CUSTOMER_SIGNIN);
             return;
         }
-        fetchTickets(email);
+        fetchTickets();
     }, []);
 
-    const fetchTickets = async (email: string) => {
+    const fetchTickets = async () => {
         try {
             setLoading(true);
-            const response = await getCustomerTickets(email);
-            console.log(response.data);
+            const token = localStorage.getItem('customerToken');
+            if (!token) {
+                navigate(PATHS.CUSTOMER_SIGNIN);
+                return;
+            }
+            const response = await getCustomerTickets(token);
             setTickets(response.data);
         } catch (error: any) {
+            if (error.response?.status === 401) {
+                localStorage.removeItem('customerToken');
+                navigate(PATHS.CUSTOMER_SIGNIN);
+            }
             setError(error.response?.data?.error || 'Failed to fetch tickets');
         } finally {
             setLoading(false);
