@@ -10,8 +10,9 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Popup from '../../components/alert/Popup';
 import Tooltip from '../../components/tooltip/Tooltip';
-import { currency, timeZone, discountTypes } from '../../@types/darw';
+import {  timeZone, discountTypes } from '../../@types/darw';
 import { FaPlus } from 'react-icons/fa6';
+import { currency as currencyOptions } from '../../@types/darw';
 
 const validateNumber = (minValue: number, errorMessage: string) =>
     z
@@ -30,6 +31,7 @@ const tierSchema = z.object({
     chanceOfWin: validateNumber(1, 'Chance of Win must be at least 1'),
     highlight: z.string().optional(),
     recurringEntry: validateNumber(0, 'Recurring Entry must be at least 0'),
+    currency: z.string().nonempty('Currency is required').default('AUD')
 });
 
 const schema = tierSchema.extend({
@@ -40,6 +42,19 @@ const schema = tierSchema.extend({
 });
 
 type TierFormData = z.infer<typeof schema>;
+
+const calculateEarnings = (price: number) => {
+    const participants = 10000;
+    const grossRevenue = Math.round(price * participants);
+    const platformFee = Math.round(grossRevenue * 0.15);
+    const netEarnings = grossRevenue - platformFee;
+    
+    return {
+        participants,
+        grossRevenue: grossRevenue.toLocaleString(),
+        netEarnings: netEarnings.toLocaleString()
+    };
+};
 
 const CreatePackage = () => {
     const today = new Date().toISOString().slice(0, 16);
@@ -70,8 +85,6 @@ const CreatePackage = () => {
     };
 
     const validateFields = () => {
-        console.log(packageData);
-        console.log(fieldErrors);
         const errors: { [key: string]: string } = {};
         if (!packageData.name.trim()) errors.name = 'Name is required';
         if (!packageData.frequency.trim()) errors.frequency = 'Frequency is required';
@@ -99,9 +112,9 @@ const CreatePackage = () => {
         resolver: zodResolver(schema),
         defaultValues: {
             name: '',
-            price: 1,
-            chanceOfWin: 0,
-            recurringEntry: 1,
+            price: undefined,
+            chanceOfWin: undefined,
+            recurringEntry: undefined,
             highlight: '',
             discounts: [],
         }
@@ -113,12 +126,13 @@ const CreatePackage = () => {
             price: data.price,
             chanceOfWin: data.chanceOfWin,
             recurringEntry: data.recurringEntry,
-            highlight: data.highlight || ''
+            highlight: data.highlight || '',
+            currency: data.currency
         };
 
         // Only validate tier fields
         const result = tierSchema.safeParse(tierData);
-        
+
         if (!result.success) {
             setShowPopup({
                 state: true,
@@ -132,15 +146,16 @@ const CreatePackage = () => {
             tiers: [...prev.tiers, tierData]
         }));
 
-        // Reset only tier fields, preserve discount fields
+        // Reset with undefined values instead of 1
         const currentDiscounts = getValues('discounts');
         reset({
             name: '',
-            price: 1,
+            price: undefined,
             chanceOfWin: 0,
-            recurringEntry: 1,
+            recurringEntry: undefined,
             highlight: '',
-            discounts: currentDiscounts
+            discounts: currentDiscounts,
+            currency: 'AUD'
         });
     };
 
@@ -171,7 +186,7 @@ const CreatePackage = () => {
         // Prevent event bubbling
         event?.preventDefault();
         event?.stopPropagation();
-        
+
         setPackageData(prev => ({
             ...prev,
             tiers: prev.tiers.filter((_, i) => i !== index)
@@ -209,6 +224,9 @@ const CreatePackage = () => {
         setShowPopup({ state: false, text: '' });
     };
 
+    const price = watch('price');
+    const currency = watch('currency');
+
     return (
         <>
             <div className="flex items-center justify-center">
@@ -219,9 +237,8 @@ const CreatePackage = () => {
                                 <span className="label-text text-sm text-neutral">
                                     Club Name{' '}
                                     <Tooltip
-                                        text={
-                                            'Enter the name of the club associated with this draw. This will be displayed to participants.'
-                                        }
+                                        text="Enter a distinctive name for your membership club. This name will be prominently displayed to all participants and should reflect your club's identity."
+                                        direction="tooltip-left"
                                     />
                                 </span>
                             </label>
@@ -287,20 +304,12 @@ const CreatePackage = () => {
                                     </span>
                                 </label>
                                 <select
-                                    className="select select-bordered border-gray-400 w-full"
+                                    className="select select-bordered w-full"
+                                    disabled={loading}
                                     defaultValue="AUD"
-                                    ref={inputRefs.currency}
-                                    onChange={(e) =>
-                                        setPackageData({
-                                            ...packageData,
-                                            currency: e.target.value
-                                        })
-                                    }
-                                    disabled={loading}>
-                                    <option value="" disabled>
-                                        Choose currency
-                                    </option>
-                                    {currency.map((option, index) => (
+                                    {...register('currency')}>
+                                    <option value="" disabled>Choose currency</option>
+                                    {currencyOptions.map((option: string, index: number) => (
                                         <option key={index} value={option}>
                                             {option}
                                         </option>
@@ -355,11 +364,10 @@ const CreatePackage = () => {
                         <div className="mb-8">
                             <label className="label">
                                 <span className="label-text text-sm">
-                                    Draw Date{' '}
+                                    Draw Date & Time{' '}
                                     <Tooltip
-                                        text={
-                                            'Select the date and time when the draw will take place.'
-                                        }
+                                        text="Set when your recurring draws will take place. This schedule will be used for all future draws in this membership package."
+                                        direction="tooltip-left"
                                     />
                                 </span>
                             </label>
@@ -385,65 +393,64 @@ const CreatePackage = () => {
 
                         <div className="primary-divider"></div>
                         {/* Heading for discount section */}
-                    <div className="text-base font-bold text-left mb-5">
-                                Exclusive Discounts and Perks
-                                
+                        <div className="text-base font-bold text-left mb-5">
+                            Exclusive Discounts and Perks
+
+                        </div>
+
+                        <div className="grid grid-cols-6 gap-2">
+                            <div className="col-span-2">
+                                <label className="label h-7 mb-0">
+                                    <span className="label-text text-sm">
+                                        Type
+                                        <Tooltip
+                                            text="Choose the type of special offer to provide. This can help attract new members or reward specific groups."
+                                            direction="tooltip-left"
+                                        />
+                                    </span>
+                                </label>
+                                <select
+                                    className="select select-bordered w-full h-9 min-h-[36px] text-sm"
+                                    disabled={loading}
+                                    {...register('discounts.0.type')}>
+                                    <option value="">Select</option>
+                                    {discountTypes.map((type, index) => (
+                                        <option key={index} value={type.value}>
+                                            {type.label}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
 
-                    <div className="grid grid-cols-6 gap-2">
-                        <div className="col-span-2">
-                            <label className="label h-7 mb-0">
-                                <span className="label-text text-sm">
-                                    Type
-                                    <Tooltip
-                                        text={'Select the type of discount to apply.'}
-                                        direction="tooltip-left"
+                            <div className="col-span-4">
+                                <label className="label h-7 mb-0">
+                                    <span className="label-text text-sm">Code</span>
+                                </label>
+                                <div className="flex gap-1">
+                                    <input
+                                        type="text"
+                                        placeholder="Enter website and the code"
+                                        className="w-full input input-bordered flex-1 h-9 min-h-[36px] text-sm"
+                                        disabled={!watch('discounts.0.type') || loading}
+                                        {...register('discounts.0.code')}
                                     />
-                                </span>
-                            </label>
-                            <select
-                                className="select select-bordered w-full h-9 min-h-[36px] text-sm"
-                                disabled={loading}
-                                {...register('discounts.0.type')}>
-                                <option value="">Select</option>
-                                {discountTypes.map((type, index) => (
-                                    <option key={index} value={type.value}>
-                                        {type.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="col-span-4">
-                            <label className="label h-7 mb-0">
-                                <span className="label-text text-sm">Code</span>
-                            </label>
-                            <div className="flex gap-1">
-                                <input
-                                    type="text"
-                                    placeholder="Enter code"
-                                    className="w-full input input-bordered flex-1 h-9 min-h-[36px] text-sm"
-                                    disabled={!watch('discounts.0.type') || loading}
-                                    {...register('discounts.0.code')}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleAddDiscount}
-                                    className={`btn h-9 min-h-[36px] ${
-                                        watch('discounts.0.type') && watch('discounts.0.code')
-                                            ? 'btn-primary'
-                                            : 'btn-disabled'
-                                    }`}
-                                    disabled={
-                                        !watch('discounts.0.type') || !watch('discounts.0.code') || loading
-                                    }>
-                                    Add
-                                </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddDiscount}
+                                        className={`btn h-9 min-h-[36px] ${watch('discounts.0.type') && watch('discounts.0.code')
+                                                ? 'btn-primary'
+                                                : 'btn-disabled'
+                                            }`}
+                                        disabled={
+                                            !watch('discounts.0.type') || !watch('discounts.0.code') || loading
+                                        }>
+                                        Add
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Display added discount codes */}
+                        {/* Display added discount codes */}
 
                         <div className="mt-4 space-y-2">
                             {packageData.discounts.map((item, index) => (
@@ -480,14 +487,23 @@ const CreatePackage = () => {
                         </div>
 
                         <div className="mb-5 lg:grid lg:grid-cols-2 gap-x-5 p-5 rounded-2xl bg-secondary/5">
+                            {price > 0 && (
+                                <div className="col-span-2 mb-4">
+                                    <Alert
+                                        type="simple-outline"
+                                        message={`If only 10% of your 100k followers enter your draw:
+Your potential earnings would be ${currency} ${calculateEarnings(price).netEarnings} (after 15% platform fee) from a total revenue of ${currency} ${calculateEarnings(price).grossRevenue}`}
+                                    />
+                                </div>
+                            )}
+
                             <div>
                                 <label className="label">
                                     <span className="label-text text-sm text-neutral">
                                         Tier Name{' '}
                                         <Tooltip
-                                            text={
-                                                'Enter a unique name for this prize tier, such as "Gold Tier" or "Silver Tier".'
-                                            }
+                                            text="Give your tier a memorable name (e.g., 'Gold', 'Platinum', 'VIP'). Higher tiers typically offer better benefits and higher chances of winning."
+                                            direction="tooltip-left"
                                         />
                                     </span>
                                 </label>
@@ -512,9 +528,8 @@ const CreatePackage = () => {
                                     <span className="label-text text-sm text-neutral">
                                         Tier Price{' '}
                                         <Tooltip
-                                            text={
-                                                "Specify the monetary value or worth of this tier's prize."
-                                            }
+                                            text="Set the membership price for this tier. Higher-priced tiers should offer better perks and increased winning chances to provide more value."
+                                            direction="tooltip-left"
                                         />
                                     </span>
                                 </label>
@@ -541,9 +556,7 @@ const CreatePackage = () => {
                                     <span className="label-text text-sm">
                                         Number of Tickets{' '}
                                         <Tooltip
-                                            text={
-                                                'Enter the number of tickets required to qualify for this tier'
-                                            }
+                                            text="Set how many entries this tier receives per draw. Higher tiers typically get more entries, increasing their chances of winning."
                                             direction="tooltip-left"
                                         />
                                     </span>
@@ -571,9 +584,7 @@ const CreatePackage = () => {
                                     <span className="label-text text-sm text-neutral">
                                         Accumulate Entries{' '}
                                         <Tooltip
-                                            text={
-                                                'Enter the name of the club associated with this draw. This will be displayed to participants.'
-                                            }
+                                            text="Specify how many automatic entries this tier receives for each recurring draw. Higher numbers mean better value for members."
                                             direction="tooltip-left"
                                         />
                                     </span>
@@ -600,9 +611,8 @@ const CreatePackage = () => {
                                     <span className="label-text text-sm text-neutral">
                                         Tier Highlight{' '}
                                         <Tooltip
-                                            text={
-                                                'Write key features or special aspects of this prize tier to make it stand out'
-                                            }
+                                            text="Write key features or special aspects of this prize tier to make it stand out"
+                                            direction="tooltip-left"
                                         />
                                     </span>
                                 </label>
@@ -640,13 +650,12 @@ const CreatePackage = () => {
                                     <div key={index}>
                                         <AccordionPackage
                                             name={tier.name}
-                                            price={tier.price}
-                                            chanceOfWin={tier.chanceOfWin}
-                                            recurringEntry={tier.recurringEntry}
+                                            price={tier.price ?? 0}
+                                            chanceOfWin={tier.chanceOfWin ?? 0}
+                                            recurringEntry={tier.recurringEntry ?? 0}
                                             highlight={tier.highlight}
                                             onDelete={(e) => {
                                                 e?.preventDefault();
-                                                e?.stopPropagation();
                                                 handleDeleteTier(index);
                                             }}
                                         />
@@ -660,6 +669,13 @@ const CreatePackage = () => {
                                     <Alert
                                         message={
                                             'Winners will be automatically selected from the pool of entry tickets at each draw date. The selection is random and transparent, ensuring fair play for all participants.'
+                                        }
+                                        type="simple-outline"
+                                    />
+                                    <br />
+                                    <Alert
+                                        message={
+                                            "If your prize money is over $30,000 please contact us at hello@vivaclub.io to to arrange your trade promotional license."
                                         }
                                         type="simple-outline"
                                     />

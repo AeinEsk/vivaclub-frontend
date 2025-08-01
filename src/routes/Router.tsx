@@ -24,7 +24,7 @@ import ProtectedRoute from '../guards/AuthGuards';
 import GuestGuard from '../guards/GuestGuard';
 import CustomerVerification from '../pages/customerVerification/CustomerVerification';
 import CustomerPortal from '../pages/customerPortal/CustomerPortal';
-import CustomerSignIn from '../pages/customerSignIn/CustomerSignIn';
+import CustomerSignIn from '../pages/CustomerSignIn/customerSignIn';
 
 const Router = () => {
     return (

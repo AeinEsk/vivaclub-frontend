@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html dir="auto" lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Support - VivaClub</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        .support-container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .support-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .form-group label {
+            font-weight: 500;
+        }
+        .form-group input, 
+        .form-group select, 
+        .form-group textarea {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .submit-button {
+            background: #0070c9;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .support-info {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="support-container">
+        <h1>VivaClub Support</h1>
+        
+        <div class="support-info">
+            <p>Need help? We're here to assist you with any questions about your VivaClub experience.</p>
+            <p>Response Time: Within 24 hours</p>
+            <p>Email: <a href="mailto:hello@vivaclub.io">hello@vivaclub.io</a></p>
+        </div>
+
+        <form class="support-form" action="/submit-support" method="POST">
+            <div class="form-group">
+                <label for="name">Full Name *</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address *</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="order">Order/Transaction ID (if applicable)</label>
+                <input type="text" id="order" name="order">
+            </div>
+
+            <div class="form-group">
+                <label for="category">Support Category *</label>
+                <select id="category" name="category" required>
+                    <option value="">Select a category</option>
+                    <option value="account">Account Issues</option>
+                    <option value="payment">Payment Problems</option>
+                    <option value="draws">Draw Questions</option>
+                    <option value="membership">Membership Support</option>
+                    <option value="refund">Refund Request</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="message">Description of Issue *</label>
+                <textarea id="message" name="message" rows="5" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="device">Device Information</label>
+                <select id="device" name="device">
+                    <option value="ios">iOS Device</option>
+                    <option value="android">Android Device</option>
+                    <option value="web">Web Browser</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <button type="submit" class="submit-button">Submit Support Request</button>
+        </form>
+
+        <div class="support-info" style="margin-top: 20px;">
+            <p><strong>Additional Support Options:</strong></p>
+            <ul>
+                <li>For urgent matters: Call us at +61 XXXX XXXX (9 AM - 5 PM AEST)</li>
+                <li>Visit our <a href="/faq">FAQ Page</a></li>
+                <li>For trade promotional license inquiries (prizes over $30,000): Contact us at <a href="mailto:hello@vivaclub.io">hello@vivaclub.io</a></li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html> 

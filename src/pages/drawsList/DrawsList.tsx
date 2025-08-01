@@ -15,6 +15,8 @@ const DrawsList = () => {
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [totalPages, setTotlaPages] = useState<number>(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isCompact, setIsCompact] = useState<boolean>(window.innerWidth < 768); // Default based on initial screen size
+
     const [filters, setFilters] = useState<DrawListFilter>({
         page: 1,
         pageSize: 10,
@@ -47,6 +49,15 @@ const DrawsList = () => {
     };
 
     useEffect(() => {
+        const handleResize = () => {
+            setIsCompact(window.innerWidth < 768); // Compact for small screens (<768px), non-compact for larger screens
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+    
+    useEffect(() => {
         (async () => {
             try {
                 setLoading(true);
@@ -78,7 +89,7 @@ const DrawsList = () => {
             </div>
             {drawData.length !== 0 ? (
                 <div>
-                    <DrawTable drawData={drawData} from={0} to={100} loading={loading} />
+                    <DrawTable drawData={drawData} from={0} to={100} loading={loading} compact={isCompact} />
                     <div className="flex justify-center mt-8">
                         <Pagination
                             totalPage={totalPages}
@@ -98,7 +109,7 @@ const DrawsList = () => {
             <button
                 className=" btn btn-primary w-full rounded-btn font-normal mt-7 text-white"
                 onClick={() => navigate(PATHS.CREATE_DRAW)}>
-                Add new draw
+                Create a New Draw
             </button>
         </div>
     );

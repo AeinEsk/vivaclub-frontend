@@ -18,7 +18,11 @@ type componentProp = {
 const Header: React.FC<componentProp> = ({ children, title, backIcon, menuIcon }) => {
     const { currentUser, handleLogout } = useAuth();
     const navigate = useNavigate();
-    const [imgLoading, setImgLoading] = useState(true);
+    const [imgLoading, setImgLoading] = useState(currentUser?.imageUrl ? true : false);
+
+    const handleImageLoad = () => {
+        setImgLoading(false);
+    };
 
     return (
         <div>
@@ -54,19 +58,19 @@ const Header: React.FC<componentProp> = ({ children, title, backIcon, menuIcon }
                             <div className="dropdown dropdown-end inset-0">
                                 <div tabIndex={0} role="button" className="avatar placeholder">
                                     <div className="w-10 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600">
-                                        {Boolean(currentUser?.imageUrl) && imgLoading && (
-                                            <div className="inset-0 ">
-                                                <span className="loading loading-spinner loading-sm"></span>
-                                            </div>
-                                        )}
-                                        {Boolean(currentUser?.imageUrl) && !imgLoading && (
-                                            <img
-                                                src={currentUser?.imageUrl || ''}
-                                                onLoad={() => setImgLoading(false)}
-                                                alt="user image"
-                                            />
-                                        )}
-                                        {Boolean(!currentUser?.imageUrl) && (
+                                        {currentUser?.imageUrl ? (
+                                            <>
+                                                {imgLoading && (
+                                                    <span className="loading loading-spinner loading-sm"></span>
+                                                )}
+                                                <img
+                                                    src={currentUser.imageUrl}
+                                                    onLoad={handleImageLoad}
+                                                    alt="user image"
+                                                    className={imgLoading ? 'hidden' : ''}
+                                                />
+                                            </>
+                                        ) : (
                                             <FaUser className="text-white" />
                                         )}
                                     </div>

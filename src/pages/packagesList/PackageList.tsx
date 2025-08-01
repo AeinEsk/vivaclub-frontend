@@ -15,6 +15,8 @@ const PackageList = () => {
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [totalPages, setTotlaPages] = useState<number>(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isCompact, setIsCompact] = useState<boolean>(window.innerWidth < 768); // Default based on initial screen size
+
     const [filters, setFilters] = useState<PackageListFilter>({
         page: 1,
         pageSize: 10,
@@ -41,6 +43,15 @@ const PackageList = () => {
             page: page
         }));
     };
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsCompact(window.innerWidth < 768); // Compact for small screens (<768px), non-compact for larger screens
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         (async () => {
@@ -74,7 +85,7 @@ const PackageList = () => {
             </div>
             {membership.length !== 0 ? (
                 <div>
-                    <PackageTable packageData={membership} from={0} to={100} loading={loading} />
+                    <PackageTable packageData={membership} from={0} to={100} loading={loading} compact={isCompact} />
                     <div className="flex justify-center mt-8">
                         <Pagination
                             totalPage={totalPages}
@@ -94,7 +105,7 @@ const PackageList = () => {
             <button
                 className=" btn btn-primary w-full rounded-btn font-normal mt-7"
                 onClick={() => navigate(PATHS.CREATE_PACKAGE)}>
-                Add new Package
+                Create a New Package
             </button>
         </div>
     );

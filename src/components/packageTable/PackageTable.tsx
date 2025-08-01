@@ -1,4 +1,3 @@
-import React from 'react';
 import { Membership } from '../../@types/packageForm';
 import { dateConverter } from '../dateConverter/DateConverter';
 import MenuCol from './MenuCol';
@@ -11,7 +10,7 @@ interface Package {
     compact?: boolean | false;
 }
 
-const PackageTable = ({ packageData, loading }: Package) => {
+const PackageTable = ({ packageData, from, to, loading, compact }: Package) => {
     return (
         <div>
             <div className="w-full">
@@ -23,18 +22,25 @@ const PackageTable = ({ packageData, loading }: Package) => {
                 <table className="min-w-full divide-y divide-border">
                     <thead>
                         <tr>
-                            <th className="table-header text-left">Name</th>
-                            <th className="table-header text-left">Frequency</th>
+                            <th className="table-header text-left">Date</th>
+                            <th className="table-header text-left">
+                            {compact ? 'Freq' : 'Frequency'}
+
+                            </th>
                             <th className="table-header text-center">Status</th>
+                            <th className="text-xs capitalize px-2">
+                                {compact ? 'No.S' : 'No. of subscribers'}
+                            </th>
                             <th className="table-header text-center">Menu</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                        {packageData.slice(0, 10).map((pkg, index) => {
+                        {packageData.slice(from, to).map((pkg, index) => {
                             const drawDateArray =
                                 dateConverter(pkg.drawDate, 'YMD-HMS')?.split(',') || [];
-                            const drawDate = `${drawDateArray[0]}${drawDateArray[1]}`;
-                            const drawTime = `${drawDateArray[2]}`;
+
+                            const drawDate = `${drawDateArray[0]}`;
+                            const drawTime = `${drawDateArray[1]}`;
 
                             return (
                                 <tr className="table-row" key={index}>

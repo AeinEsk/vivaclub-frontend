@@ -16,6 +16,7 @@ const CustomerSignIn = () => {
     const [isValid, setIsValid] = useState<boolean>(false);
     const [loading, setLoading] = useState(false);
 
+
     useEffect(() => {
         const emailParam = searchParams.get('email');
         if (emailParam && validateEmail(emailParam)) {
@@ -36,7 +37,7 @@ const CustomerSignIn = () => {
         setIsValid(validateEmail(value));
     };
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!isValid) {
             setAlert(true);
@@ -50,7 +51,12 @@ const CustomerSignIn = () => {
             }, 3000);
             return;
         }
-        navigate(`${PATHS.CUSTOMER_VERIFICATION}?email=${email}`);
+        setLoading(true);
+        try {
+            navigate(`${PATHS.CUSTOMER_VERIFICATION}?email=${email}`);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

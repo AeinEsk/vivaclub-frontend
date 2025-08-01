@@ -1,19 +1,9 @@
-FROM node:18-alpine as build-stage
-
-
+FROM --platform=linux/amd64 node:20-slim as build-stage
 WORKDIR /app
-
-COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy the rest of the application
+COPY package.json ./
+RUN rm -rf node_modules && yarn cache clean && yarn install --frozen-lockfile
 COPY . .
-
-EXPOSE 5173
-
-CMD ["npm", "run", "dev"]
+RUN yarn build
 
 FROM --platform=linux/amd64 nginx:alpine as production-stage
 COPY --from=build-stage /app/dist /usr/share/nginx/html
