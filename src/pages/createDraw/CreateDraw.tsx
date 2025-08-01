@@ -5,9 +5,22 @@ import { PATHS } from '../../routes/routes';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { currency, drawType, timeZone, discountTypes } from '../../@types/darw';
+import { currency as currencyOptions, drawType, timeZone, discountTypes } from '../../@types/darw';
 import Tooltip from '../../components/tooltip/Tooltip';
 import Alert from '../../components/alert/Alert';
+
+const calculateEarnings = (entryCost: number) => {
+    const participants = 10000;
+    const grossRevenue = Math.round(entryCost * participants);
+    const platformFee = Math.round(grossRevenue * 0.15);
+    const netEarnings = grossRevenue - platformFee;
+    
+    return {
+        participants,
+        grossRevenue: grossRevenue.toLocaleString(),
+        netEarnings: netEarnings.toLocaleString()
+    };
+};
 
 const LoadingOverlay = () => {
     return (
@@ -114,6 +127,9 @@ const CreateDraw = () => {
         }
     });
 
+    const entryCost = watch('entryCost');
+    const currency = watch('currency');
+
     const onSubmit = async (data: FormData) => {
         try {
             setLoading(true);
@@ -127,13 +143,10 @@ const CreateDraw = () => {
 
 
             const response = await createDraw(formDataWithDiscounts);
-            console.log('API Response:', response);
 
             if (response && response.data) {
-                console.log('Navigation to:', PATHS.WELCOME);
                 navigate(PATHS.WELCOME);
             } else {
-                console.log('No response data');
                 setError('Failed to create draw. Please try again.');
                 setLoading(false);
             }
@@ -176,9 +189,8 @@ const CreateDraw = () => {
                             <span className="label-text">
                                 Draw Name{' '}
                                 <Tooltip
-                                    text={
-                                        'Enter a unique name for the draw. This name will be displayed to participants.'
-                                    }
+                                    text="Give your draw a clear, descriptive name that helps participants understand what they're entering. This will be prominently displayed."
+                                    direction="tooltip-left"
                                 />
                             </span>
                         </label>
@@ -205,9 +217,8 @@ const CreateDraw = () => {
                                 <span className="label-text text-sm">
                                     Draw Date & Time{' '}
                                     <Tooltip
-                                        text={
-                                            'Select the date and time when the draw will take place. '
-                                        }
+                                        text="Set when the draw will take place. Choose a time that maximizes participation and gives enough time for promotion."
+                                        direction="tooltip-left"
                                     />
                                 </span>
                             </label>
@@ -258,9 +269,8 @@ const CreateDraw = () => {
                             <span className="label-text text-sm">
                                 Prize{' '}
                                 <Tooltip
-                                    text={
-                                        'Specify the total prize amount to be awarded to the winners of the draw.'
-                                    }
+                                    text="Describe the prize in detail, including its value and any specific conditions. Be clear and transparent about what winners will receive."
+                                    direction="tooltip-left"
                                 />
                             </span>
                         </label>
@@ -278,68 +288,82 @@ const CreateDraw = () => {
                             )}
                         </label>
                     </div>
-                    <div className="grid grid-cols-3">
-                        <div className="col-span-2 mr-3">
-                            <label className="label">
-                                <span className="label-text text-sm">
-                                    Entry Cost{' '}
-                                    <Tooltip
-                                        text={
-                                            'Enter the cost required for participants to enter the draw.'
-                                        }
-                                    />
-                                </span>
-                            </label>
-                            <input
-                                type="number"
-                                placeholder="Enter entry cost"
-                                step="any"
-                                className="input input-bordered  w-full"
-                                disabled={loading}
-                                {...register('entryCost', { valueAsNumber: true })}
-                                min={0}
-                            />
-                            <label className="label">
-                                {errors.entryCost && (
-                                    <span className="label-text-alt text-red-600 font-semibold">
-                                        {errors.entryCost.message}
+                    <div>
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="col-span-2">
+                                <label className="label">
+                                    <span className="label-text text-sm">
+                                        Entry Cost{' '}
+                                        <Tooltip
+                                            text="Set how much it costs to enter the draw. Consider your target audience and the prize value when setting this amount. This directly affects your potential earnings."
+                                            direction="tooltip-left"
+                                        />
                                     </span>
-                                )}
-                            </label>
-                        </div>
-                        <div>
-                            <label className="label">
-                                <span className="label-text text-sm ">Currency</span>
-                            </label>
-                            <select
-                                className="select select-bordered  w-full"
-                                disabled={loading}
-                                defaultValue="AUD"
-                                {...register('currency')}>
-                                <option value="" disabled>
-                                    Choose currency
-                                </option>
-                                {currency.map((option, index) => (
-                                    <option key={index} value={option}>
-                                        {option}
+                                </label>
+                                <input
+                                    type="number"
+                                    placeholder="Enter entry cost"
+                                    step="any"
+                                    className="input input-bordered w-full"
+                                    disabled={loading}
+                                    {...register('entryCost', { valueAsNumber: true })}
+                                    min={0}
+                                />
+                                <label className="label">
+                                    {errors.entryCost && (
+                                        <span className="label-text-alt text-red-600 font-semibold">
+                                            {errors.entryCost.message}
+                                        </span>
+                                    )}
+                                </label>
+                            </div>
+
+                            <div className="col-span-1">
+                                <label className="label">
+                                    <span className="label-text text-sm">Currency</span>
+                                </label>
+                                <select
+                                    className="select select-bordered w-full"
+                                    disabled={loading}
+                                    defaultValue="AUD"
+                                    {...register('currency')}>
+                                    <option value="" disabled>
+                                        Choose currency
                                     </option>
-                                ))}
-                            </select>
-                            <label className="label">
-                                {errors.currency && (
-                                    <span className="label-text-alt text-red-600 font-semibold">
-                                        {errors.currency.message}
-                                    </span>
-                                )}
-                            </label>
+                                    {currencyOptions.map((option: string, index: number) => (
+                                        <option key={index} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
+                                <label className="label">
+                                    {errors.currency && (
+                                        <span className="label-text-alt text-red-600 font-semibold">
+                                            {errors.currency.message}
+                                        </span>
+                                    )}
+                                </label>
+                            </div>
                         </div>
+
+                        {/* Earnings calculator below both fields */}
+                        {entryCost > 0 && (
+                            <div className="mt-2">
+                                <Alert
+                                    type="simple-outline"
+                                    message={`If only 10% of your 100k followers enter your draw:
+Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netEarnings} (after 15% platform fee) from a total revenue of ${currency} ${calculateEarnings(entryCost).grossRevenue}`}
+                                />
+                            </div>
+                        )}
                     </div>
                     <div>
                         <label className="label">
                             <span className="label-text text-sm">
                                 Draw Type{' '}
                                 <Tooltip
-                                    text={'Choose the method by which the draw will be conducted.'}
+                                    text="Choose how winners will be selected. This determines the draw mechanism and affects how participants are chosen."
+                                    direction="tooltip-left"
                                 />
                             </span>
                         </label>
@@ -370,9 +394,9 @@ const CreateDraw = () => {
 
                     {/* Heading for discount section */}
                     <div className="text-base font-bold text-left mb-5">
-                                Exclusive Discounts and Perks
-                                
-                            </div>
+                        Exclusive Discounts and Perks
+
+                    </div>
 
                     <div className="grid grid-cols-6 gap-2">
                         <div className="col-span-2">
@@ -380,7 +404,7 @@ const CreateDraw = () => {
                                 <span className="label-text text-sm">
                                     Type
                                     <Tooltip
-                                        text={'Select the type of discount to apply.'}
+                                        text="Choose what kind of special offer to provide. Strategic discounts can help boost participation and reward specific groups."
                                         direction="tooltip-left"
                                     />
                                 </span>
@@ -405,7 +429,7 @@ const CreateDraw = () => {
                             <div className="flex gap-1">
                                 <input
                                     type="text"
-                                    placeholder="Enter code"
+                                    placeholder="Enter website code"
                                     className="w-full input input-bordered flex-1 h-9 min-h-[36px] text-sm"
                                     disabled={!watch('discounts.0.type') || loading}
                                     {...register('discounts.0.code')}
@@ -413,11 +437,10 @@ const CreateDraw = () => {
                                 <button
                                     type="button"
                                     onClick={handleAddDiscount}
-                                    className={`btn h-9 min-h-[36px] ${
-                                        watch('discounts.0.type') && watch('discounts.0.code')
+                                    className={`btn h-9 min-h-[36px] ${watch('discounts.0.type') && watch('discounts.0.code')
                                             ? 'btn-primary'
                                             : 'btn-disabled'
-                                    }`}
+                                        }`}
                                     disabled={
                                         !watch('discounts.0.type') || !watch('discounts.0.code') || loading
                                     }>
@@ -461,9 +484,8 @@ const CreateDraw = () => {
                             <span className="label-text text-sm">
                                 Promotional Image{' '}
                                 <Tooltip
-                                    text={
-                                        'Upload an optional image that will be displayed to participants. The image should promopte your draw and include information around the draw/prize.'
-                                    }
+                                    text="Upload an eye-catching image that represents your draw. High-quality visuals can increase participation rates."
+                                    direction="tooltip-left"
                                 />
                             </span>
                         </label>
@@ -496,6 +518,13 @@ const CreateDraw = () => {
                         <Alert
                             message={
                                 "The draw can't be edited after creation, only canceled. All entries will be refunded if the draw is canceled"
+                            }
+                            type="simple-outline"
+                        />
+                        <br />
+                        <Alert
+                            message={
+                                "If your prize money is over $30,000 please contact us at hello@vivaclub.io to to arrange your trade promotional license."
                             }
                             type="simple-outline"
                         />

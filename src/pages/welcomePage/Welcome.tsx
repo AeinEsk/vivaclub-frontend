@@ -58,10 +58,10 @@ const Welcome = () => {
                 <div className="flex gap-2 justify-between items-center p-4 md:p-6 border-b border-border">
                     <div>
                         <h2 className="text-lg md:text-xl text-left font-semibold mb-1 bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                            Upcoming Draws Details
+                            Draws
                         </h2>
-                        <p className="text-sm text-left text-text-secondary">
-                            If you need a one-off single draw, create a draw here.
+                        <p className="text-xs sm:text-sm text-left text-text-secondary">
+                            If you need a one-time draw, create it here.
                         </p>
                     </div>
                     <Link to="/profile/create-draw">
@@ -72,13 +72,13 @@ const Welcome = () => {
                                 stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
                                     d="M12 4v16m8-8H4"
                                 />
                             </svg>
-                            <span className="text-nowrap">New Draw</span>
+                            <span className="text-nowrap">Draw</span>
                         </button>
                     </Link>
                 </div>
@@ -112,10 +112,10 @@ const Welcome = () => {
                 <div className="flex gap-2 justify-between items-center p-4 md:p-6 border-b border-border">
                     <div>
                         <h2 className="text-lg md:text-xl text-left font-semibold mb-1 bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-                            Club Membership Details
+                            Club Memberships
                         </h2>
-                        <p className="text-sm text-left text-text-secondary">
-                            For recurring club membership, create a draw here.
+                        <p className="text-xs sm:text-sm text-left text-text-secondary">
+                            For a recurring club membership draw, create one here.
                         </p>
                     </div>
                     <Link to="/profile/create-package">
@@ -126,13 +126,13 @@ const Welcome = () => {
                                 stroke="currentColor"
                                 viewBox="0 0 24 24">
                                 <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
                                     d="M12 4v16m8-8H4"
                                 />
                             </svg>
-                            <span className="text-nowrap">New Package</span>
+                            <span className="text-nowrap">Package</span>
                         </button>
                     </Link>
                 </div>

@@ -265,10 +265,10 @@ const CustomerPortal = () => {
     );
 };
 
-const styles = `
-.filter-gold {
-    filter: invert(70%) sepia(80%) saturate(1000%) hue-rotate(359deg) brightness(105%) contrast(105%);
-}
-`;
+// const styles = `
+// .filter-gold {
+//     filter: invert(70%) sepia(80%) saturate(1000%) hue-rotate(359deg) brightness(105%) contrast(105%);
+// }
+// `;
 
 export default CustomerPortal; 

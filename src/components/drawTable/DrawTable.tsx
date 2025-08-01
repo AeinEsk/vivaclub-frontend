@@ -17,7 +17,7 @@ interface Draw {
 const DrawTable: React.FC<Draw> = ({ drawData, from, to, loading, compact }) => {
     const today = new Date();
     const formattedDate = today.toISOString();
-
+    console.log(from,to);
     const handleStatus = (date: string) => {
         if (date > formattedDate) {
             return true;
@@ -35,8 +35,8 @@ const DrawTable: React.FC<Draw> = ({ drawData, from, to, loading, compact }) => 
                 <table className="min-w-full divide-y divide-border">
                     <thead>
                         <tr>
-                            <th className="table-header text-left">Draw Date</th>
-                            <th className="table-header text-left">Draw Name</th>
+                            <th className="table-header text-left">Date</th>
+                            <th className="table-header text-left">Name</th>
                             <th className="table-header text-center">
                                 {compact ? 'No.P' : 'No. of Partic'}
                             </th>
@@ -47,18 +47,16 @@ const DrawTable: React.FC<Draw> = ({ drawData, from, to, loading, compact }) => 
                     </thead>
                     <tbody className="divide-y divide-border">
                         {drawData.slice(0, 10).map((draw, index) => {
-                            const drawDateArray =
-                                dateConverter(draw.runAt, 'YMD-HMS')?.split(',') || [];
-                            const drawDate = `${drawDateArray[0]}${drawDateArray[1]}`;
-                            const drawTime = `${drawDateArray[2]}`;
+                            const dateString = dateConverter(draw.runAt, 'YMD-HMS');
+                            const [date, time] = dateString.split(',');
 
                             return (
                                 <tr className="table-row" key={index}>
                                     <td className="table-cell">
                                         <div className="flex flex-col items-start">
-                                            <span className="font-medium">{drawDate}</span>
+                                            <span className="font-medium">{date || 'N/A'}</span>
                                             <span className="text-text-secondary text-xs">
-                                                {drawTime}
+                                                {time || 'N/A'}
                                             </span>
                                         </div>
                                     </td>
@@ -72,9 +70,9 @@ const DrawTable: React.FC<Draw> = ({ drawData, from, to, loading, compact }) => 
                                                         stroke="currentColor"
                                                         viewBox="0 0 24 24">
                                                         <path
-                                                            stroke-linecap="round"
-                                                            stroke-linejoin="round"
-                                                            stroke-width="2"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth="2"
                                                             d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                                                         />
                                                     </svg>

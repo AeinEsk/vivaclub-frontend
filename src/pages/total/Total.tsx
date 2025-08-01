@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { drawPaymentRequest, packagePaymentRequest } from '../../api/payment';
 import { DrawPayment, PackagePayment } from '../../@types/payment';
 import card from '../../assets/card.svg';
 import paypal from '../../assets/paypal.svg';
+import applePay from '../../assets/apple-pay.svg';
+import googlePay from '../../assets/google-pay.svg';
 import { FaRegEnvelope } from 'react-icons/fa6';
 
 const Total = () => {
@@ -17,6 +19,8 @@ const Total = () => {
     const [toast, setToast] = useState<boolean>(false);
     const [paymentMethod, setPaymentMethod] = useState<string>('');
     const [acceptedTerms, setAcceptedTerms] = useState<boolean>(false);
+    const [isApplePayAvailable, setIsApplePayAvailable] = useState(false);
+    const [isGooglePayAvailable, setIsGooglePayAvailable] = useState(false);
 
     const validateEmail = (email: string): boolean => {
         const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -70,6 +74,22 @@ const Total = () => {
         }
     };
 
+    useEffect(() => {
+        const checkPaymentMethods = () => {
+            // Check for Apple Pay
+            const isAppleDevice = /iPhone|iPad|Mac/.test(navigator.platform);
+            setIsApplePayAvailable(isAppleDevice);
+
+            // Check for Google Pay (Android devices)
+            const isAndroidDevice = /Android/.test(navigator.userAgent);
+            setIsGooglePayAvailable(isAndroidDevice);
+        };
+
+        checkPaymentMethods();
+    }, []);
+
+    console.log('Payment methods:', { paymentMethod, activeBtn });
+
     return (
         <div className="flex flex-col items-center justify-center">
             {totalCost ? (
@@ -103,11 +123,7 @@ const Total = () => {
                                         setPaymentMethod('card');
                                     }}
                                     disabled={loading}>
-                                    <img
-                                        src={card}
-                                        alt="credit card"
-                                        className="w-6 h-6 m-0 flex mr-2"
-                                    />
+                                    <img src={card} alt="credit card" className="w-8 h-8 m-0 flex mr-2" />
                                     <span>Credit Card</span>
                                 </button>
                                 <button
@@ -117,13 +133,33 @@ const Total = () => {
                                         setPaymentMethod('paypal');
                                     }}
                                     disabled={loading}>
-                                    <img
-                                        src={paypal}
-                                        alt="paypal"
-                                        className="w-6 h-6 m-0 flex mr-2"
-                                    />
+                                    <img src={paypal} alt="paypal" className="w-8 h-8 m-0 flex mr-2" />
                                     <span>PayPal</span>
                                 </button>
+                                {isApplePayAvailable && (
+                                    <button
+                                        className={`btn ${activeBtn === 3 ? 'bg-primary/5 border-primary/20 text-[#6D28D9]' : 'btn-outline'} w-full rounded-btn border-border flex justify-start relative hover:bg-primary/20 hover:text-black`}
+                                        onClick={() => {
+                                            setActiveBtn(3);
+                                            setPaymentMethod('apple-pay');
+                                        }}
+                                        disabled={loading}>
+                                        <img src={applePay} alt="apple pay" className="w-8 h-8 m-0 flex mr-2" />
+                                        <span>Apple Pay</span>
+                                    </button>
+                                )}
+                                {isGooglePayAvailable && (
+                                    <button
+                                        className={`btn ${activeBtn === 4 ? 'bg-primary/5 border-primary/20 text-[#6D28D9]' : 'btn-outline'} w-full rounded-btn border-border flex justify-start relative hover:bg-primary/20 hover:text-black`}
+                                        onClick={() => {
+                                            setActiveBtn(4);
+                                            setPaymentMethod('google-pay');
+                                        }}
+                                        disabled={loading}>
+                                        <img src={googlePay} alt="google pay" className="w-8 h-8 m-0 flex mr-2" />
+                                        <span>Google Pay</span>
+                                    </button>
+                                )}
                             </div>
 
                             <div className="mt-5">

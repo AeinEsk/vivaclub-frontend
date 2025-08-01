@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { customerOtpRequest, verifyCustomerOtp } from '../../api/otp';
 import { FaPaperPlane } from 'react-icons/fa6';
 import { PATHS } from '../../routes/routes';
-import Alert from '../../components/alert/Alert';
 
 const CustomerVerification = () => {
     const [searchParams] = useSearchParams();

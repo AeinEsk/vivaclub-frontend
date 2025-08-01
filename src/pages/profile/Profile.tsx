@@ -5,7 +5,6 @@ import { getMemberships } from '../../api/packages';
 import Loading from '../../components/loading/Loading';
 import { getDrawsList } from '../../api/draws';
 import { PATHS } from '../../routes/routes';
-import { FaUser } from 'react-icons/fa6';
 import { FaCube } from 'react-icons/fa6';
 import { FaAngleRight } from 'react-icons/fa6';
 import { FaListCheck } from 'react-icons/fa6';
@@ -15,6 +14,8 @@ import { FaGear } from 'react-icons/fa6';
 import { FaRegEnvelope } from 'react-icons/fa6';
 import { FaRegCalendar } from 'react-icons/fa6';
 import { FaRegClock } from 'react-icons/fa6';
+import userSVG from '../../assets/square-user-round.svg';
+
 
 interface CollapseItemsProps {
     label: string;
@@ -78,11 +79,14 @@ const Profile = () => {
                     <div className="w-full max-w-sm">
                         <div className="flex flex-row gap-5 justify-start mt-6 ">
                             <div className="flex items-center justify-center w-20 h-20 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600">
-                                {currentUser?.imageUrl ? (
-                                    <img src="" />
-                                ) : (
-                                    <FaUser className="text-3xl text-white" />
-                                )}
+                            <img
+                                    src={
+                                        currentUser?.imageUrl !== null
+                                            ? `${currentUser?.imageUrl}`
+                                            : userSVG
+                                    }
+                                />
+
                             </div>
 
                             <article className="prose text-start mt-4">
