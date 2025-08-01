@@ -1,3 +1,7 @@
+import typography from '@tailwindcss/typography';
+import daisyui from 'daisyui';
+import daisyuiThemes from 'daisyui/src/theming/themes';
+
 /** @type {import('tailwindcss').Config} */
 export default {
     content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
@@ -23,13 +27,13 @@ export default {
               }
         }
     },
-    plugins: [require('@tailwindcss/typography'), require('daisyui')],
-
+    plugins: [typography, daisyui],
+    
     daisyui: {
         themes: [
             {
                 light: {
-                    ...require('daisyui/src/theming/themes')['light'],
+                    ...daisyuiThemes['light'],
                     primary: '#7C3AED',
                     primaryContent: 'white',
                     neutral: '#01070f',
