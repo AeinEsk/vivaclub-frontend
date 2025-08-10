@@ -50,7 +50,28 @@ const schema = z.object({
     discounts: z.array(z.object({
         type: z.string(),
         code: z.string()
-    })).optional()
+    })).optional(),
+    ticketCap: z
+        .number({ invalid_type_error: 'Number of Ticket(s) must be a number' })
+        .int('Must be an integer')
+        .positive('Must be greater than 0')
+        .optional(),
+    numbersLength: z
+        .number({ invalid_type_error: 'Numbers drawn must be a number' })
+        .int('Must be an integer')
+        .min(1, 'At least 1 number')
+        .max(20, 'Too many numbers')
+        .optional(),
+    numbersFrom: z
+        .number({ invalid_type_error: 'From must be a number' })
+        .int('Must be an integer')
+        .min(0, 'Min is 0')
+        .optional(),
+    numbersTo: z
+        .number({ invalid_type_error: 'To must be a number' })
+        .int('Must be an integer')
+        .min(1, 'Min is 1')
+        .optional()
 });
 
 // Update validation schema
@@ -123,7 +144,11 @@ const CreateDraw = () => {
             runMethod: '',
             imageId: undefined,
             timezone: 'Australia/Sydney',
-            currency: 'AUD'
+            currency: 'AUD',
+            ticketCap: undefined,
+            numbersLength: 7,
+            numbersFrom: 0,
+            numbersTo: 13
         }
     });
 
@@ -387,6 +412,84 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                                 </span>
                             )}
                         </label>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-1">
+                            <label className="label">
+                                <span className="label-text text-sm">Number of Ticket(s)</span>
+                            </label>
+                            <input
+                                type="number"
+                                placeholder="e.g. 1000"
+                                className="input input-bordered w-full"
+                                disabled={loading}
+                                {...register('ticketCap', { valueAsNumber: true })}
+                                min={1}
+                            />
+                            <label className="label">
+                                {errors.ticketCap && (
+                                    <span className="label-text-alt text-red-600 font-semibold">
+                                        {errors.ticketCap.message}
+                                    </span>
+                                )}
+                            </label>
+                        </div>
+
+                        <div className="col-span-2">
+                            <label className="label">
+                                <span className="label-text text-sm">Numbers Drawn (odds)</span>
+                            </label>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <label className="label h-6 mb-1">
+                                    <span className="label-text text-xs">Numbers drawn per ticket</span>
+                                  </label>
+                                  <input
+                                    type="number"
+                                    placeholder="Length"
+                                    className="input input-bordered w-full"
+                                    disabled={loading}
+                                    {...register('numbersLength', { valueAsNumber: true })}
+                                    min={1}
+                                    max={20}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="label h-6 mb-1">
+                                    <span className="label-text text-xs">Range start (From)</span>
+                                  </label>
+                                  <input
+                                    type="number"
+                                    placeholder="From"
+                                    className="input input-bordered w-full"
+                                    disabled={loading}
+                                    {...register('numbersFrom', { valueAsNumber: true })}
+                                    min={0}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="label h-6 mb-1">
+                                    <span className="label-text text-xs">Range end (To)</span>
+                                  </label>
+                                  <input
+                                    type="number"
+                                    placeholder="To"
+                                    className="input input-bordered w-full"
+                                    disabled={loading}
+                                    {...register('numbersTo', { valueAsNumber: true })}
+                                    min={1}
+                                  />
+                                </div>
+                            </div>
+                            <label className="label">
+                                {(errors.numbersLength || errors.numbersFrom || errors.numbersTo) && (
+                                    <span className="label-text-alt text-red-600 font-semibold">
+                                        {(errors.numbersLength?.message || errors.numbersFrom?.message || errors.numbersTo?.message) as string}
+                                    </span>
+                                )}
+                            </label>
+                        </div>
                     </div>
 
                     {/* Divider above */}

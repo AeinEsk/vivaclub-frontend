@@ -2,7 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import InfoBtn from '../../components/infoButton/InfoBtn';
 import { useEffect, useState } from 'react';
 import Loading from '../../components/loading/Loading';
-import { cancelDraw, getDrawInfoById } from '../../api/draws';
+import { cancelDraw, getDrawInfoById, getDrawStats } from '../../api/draws';
 import { HOST_API } from '../../api/config';
 import { dateConverter } from '../../components/dateConverter/DateConverter';
 import Popup from '../../components/alert/Popup';
@@ -37,6 +37,13 @@ const DrawDetails = () => {
     const [imageUrl, setImageUrl] = useState<string>();
     const [imgLoading, setImgLoading] = useState(true);
     const [imgError, setImgError] = useState<boolean>(false);
+    const [ticketCount, setTicketCount] = useState<number>(0);
+    const [winnerCode, setWinnerCode] = useState<string | null>(null);
+    const [numbersFrequency, setNumbersFrequency] = useState<Array<{ number: string; count: number }>>([]);
+    const [ticketCap, setTicketCap] = useState<number | null>(null);
+    const [numbersLength, setNumbersLength] = useState<number | null>(null);
+    const [numbersFrom, setNumbersFrom] = useState<number | null>(null);
+    const [numbersTo, setNumbersTo] = useState<number | null>(null);
     const today = new Date();
     const formattedDate = today.toISOString();
     const [cancelLoading, setCancelLoading] = useState(false);
@@ -65,6 +72,21 @@ const DrawDetails = () => {
                             currency: data.currency
                         });
                         setImageUrl(`${HOST_API}/public/download/${data?.imageId}`);
+                        setTicketCap(data.ticketCap ?? null);
+                        setNumbersLength(data.numbersLength ?? null);
+                        setNumbersFrom(data.numbersFrom ?? null);
+                        setNumbersTo(data.numbersTo ?? null);
+                        // Fetch stats in parallel
+                        try {
+                            const statsRes = await getDrawStats(drawId);
+                            if (statsRes.status === 200) {
+                                setTicketCount(statsRes.data.ticketCount || 0);
+                                setWinnerCode(statsRes.data.winnerCode || null);
+                                setNumbersFrequency(statsRes.data.numbersFrequency || []);
+                            }
+                        } catch (e) {
+                            // non-blocking
+                        }
                     } else {
                         setError(true);
                     }
@@ -191,6 +213,46 @@ const DrawDetails = () => {
                                     )}
 
                                     <div className="h-[1px] bg-gray-50 my-6 -mx-4"></div>
+
+                                    <div className="bg-gray-50 p-3 rounded-xl mb-4">
+                                        <div className="flex gap-1 items-center text-xs text-primary">
+                                            <FaUser /> <span>Tickets Sold</span>
+                                        </div>
+                                        <p className="text-xs mt-2 text-left">{ticketCount}</p>
+                                        {winnerCode && (
+                                            <p className="text-xs mt-1 text-left">Winner Code: {winnerCode}</p>
+                                        )}
+                                        <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
+                                            {ticketCap !== null && (
+                                                <div className="bg-white p-2 rounded border flex justify-between"><span>Ticket cap</span><span>{ticketCap}</span></div>
+                                            )}
+                                            {numbersLength !== null && (
+                                                <div className="bg-white p-2 rounded border flex justify-between"><span>Numbers drawn</span><span>{numbersLength}</span></div>
+                                            )}
+                                            {numbersFrom !== null && (
+                                                <div className="bg-white p-2 rounded border flex justify-between"><span>Range start (From)</span><span>{numbersFrom}</span></div>
+                                            )}
+                                            {numbersTo !== null && (
+                                                <div className="bg-white p-2 rounded border flex justify-between"><span>Range end (To)</span><span>{numbersTo}</span></div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {numbersFrequency && numbersFrequency.length > 0 && (
+                                        <div className="bg-gray-50 p-3 rounded-xl">
+                                            <div className="flex gap-1 items-center text-xs text-primary">
+                                                <FaUser /> <span>Number Frequency</span>
+                                            </div>
+                                            <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
+                                                {numbersFrequency.map((nf) => (
+                                                    <div key={`${nf.number}`} className="flex justify-between bg-white p-2 rounded border">
+                                                        <span>{nf.number}</span>
+                                                        <span>{nf.count}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {!drawInfo.deactivatedAt && handleStatus(drawInfo.runAt) ? (
                                         <div

@@ -4,6 +4,7 @@ import { axiosInstance } from '../utils/axios';
 const CREATE_DRAW = '/api/club-owner/draw/';
 const DRAW_LIST = '/api/club-owner/draw';
 const DRAW_BY_ID = '/public/club-owner/draw/';
+const DRAW_STATS = '/api/club-owner/draw/';
 const UPLOAD_IMAGE = '/api/upload/';
 const DRAW_MEMBERSHIPS = '/api/club-owner/draw/membership/';
 const DELETE_DRAW = '/api/club-owner/draw/';
@@ -25,7 +26,11 @@ export const createDraw = (drawData: DrawFormData) => {
         runMethod: drawData.runMethod,
         currency: drawData.currency,
         imageId: drawData.imageId,
-        discounts: drawData.discounts
+        discounts: drawData.discounts,
+        ticketCap: drawData.ticketCap,
+        numbersLength: drawData.numbersLength,
+        numbersFrom: drawData.numbersFrom,
+        numbersTo: drawData.numbersTo
     };
 
     return axiosInstance.post(CREATE_DRAW, payload);
@@ -39,6 +44,10 @@ export const getDrawsList = (drawFilters: Partial<DrawListFilter>) => {
 
 export const getDrawInfoById = (drawId: string) => {
     return axiosInstance.get(`${DRAW_BY_ID}${drawId}`);
+};
+
+export const getDrawStats = (drawId: string) => {
+    return axiosInstance.get(`${DRAW_STATS}${drawId}/stats`);
 };
 
 export const uploadImage = (file: FormData) => {
