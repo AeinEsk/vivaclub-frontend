@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom';
 import { FaPlus } from 'react-icons/fa6';
 import { FaRegFileLines } from 'react-icons/fa6';
 import { FaRegFileImage } from 'react-icons/fa6';
-import { FaUserShield } from 'react-icons/fa6';
+import { FaUserShield, FaFileSignature } from 'react-icons/fa6';
+import { PATHS } from '../../routes/routes';
 import { FaQuestion } from 'react-icons/fa6';
 
 const Drawer = () => {
@@ -71,13 +72,10 @@ const Drawer = () => {
                                 </a>
                             </li>
                             <li>
-                                <a
-                                    className="mx-1 no-underline"
-                                    href="https://vivaclub.io/terms-conditions"
-                                    target="_blank">
-                                    <FaUserShield className="text-lg" />
+                                <Link to={PATHS.TERMS} className="mx-1 no-underline">
+                                    <FaFileSignature className="text-lg" />
                                     Terms And Conditions
-                                </a>
+                                </Link>
                             </li>
                             <li>
                                 <a

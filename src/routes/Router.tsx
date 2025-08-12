@@ -13,6 +13,7 @@ import { Welcome } from '../pages/welcomePage';
 import { DrawInfo } from '../pages/drawInfo';
 import { PackageInfo } from '../pages/packagesDetails';
 import { Total } from '../pages/total';
+import TermsManager, { TermsViewer } from '../pages/terms';
 import { Payment } from '../pages/payment';
 import { PATHS } from './routes';
 import { GoogleAuth } from '../pages/googleAuth';
@@ -113,6 +114,26 @@ const Router = () => {
                             <CreateDraw />
                         </Header>
                     </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path={PATHS.TERMS}
+                element={
+                    <ProtectedRoute>
+                        <Header title="Terms & Conditions" backIcon={true}>
+                            <TermsManager />
+                        </Header>
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path={PATHS.PUBLIC_TERMS}
+                element={
+                    <Header title="Terms & Conditions" backIcon>
+                        <TermsViewer />
+                    </Header>
                 }
             />
 

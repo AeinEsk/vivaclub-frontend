@@ -8,6 +8,11 @@ export type DrawFormData = {
     imageId?: string | undefined;
     currency: string;
     discounts: DiscountData[];
+    ticketCap?: number;
+    numbersLength?: number;
+    numbersFrom?: number;
+    numbersTo?: number;
+    termsHtml?: string;
 };
 export interface DiscountData {
     type: string;

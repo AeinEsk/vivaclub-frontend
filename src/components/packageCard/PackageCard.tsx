@@ -107,7 +107,7 @@ const PackageCard: React.FC<cardProps> = ({
                         <div className="mt-2 text-xs">
                             <p className="text-secondary">Cancel anytime</p>
                             <a
-                                href="https://vivaclub.io/terms-conditions"
+                                href="/terms"
                                 target="_blank"
                                 className="block mt-1 text-primary">
                                 Terms and Conditions

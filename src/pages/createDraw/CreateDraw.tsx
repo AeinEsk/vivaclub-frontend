@@ -8,6 +8,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { currency as currencyOptions, drawType, timeZone, discountTypes } from '../../@types/darw';
 import Tooltip from '../../components/tooltip/Tooltip';
 import Alert from '../../components/alert/Alert';
+import { Link } from 'react-router-dom';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { fetchTerms } from '../../api/terms';
 
 const calculateEarnings = (entryCost: number) => {
     const participants = 10000;
@@ -98,6 +102,31 @@ const CreateDraw = () => {
     const navigate = useNavigate();
     // Add state for discount codes
     const [discountItems, setDiscountItems] = useState<Array<{ type: string; code: string }>>([]);
+    // Terms modal states
+    const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
+    const [termsContent, setTermsContent] = useState<string>('');
+    const [termsLoading, setTermsLoading] = useState<boolean>(false);
+    const [termsEdited, setTermsEdited] = useState<boolean>(false);
+
+    const openTermsModal = async () => {
+        try {
+            setTermsLoading(true);
+            setShowTermsModal(true);
+            if (!termsEdited) {
+                const { data } = await fetchTerms();
+                setTermsContent(data?.html || '');
+            }
+        } catch (e) {
+            setTermsContent('');
+        } finally {
+            setTermsLoading(false);
+        }
+    };
+    const closeTermsModal = () => setShowTermsModal(false);
+    const saveTermsModal = () => {
+        setTermsEdited(true);
+        setShowTermsModal(false);
+    };
 
     const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = event.target.files?.[0];
@@ -160,10 +189,10 @@ const CreateDraw = () => {
             setLoading(true);
             setError('');
 
-            // Add discount items to the form data
             const formDataWithDiscounts = {
                 ...data,
-                discounts: discountItems
+                discounts: discountItems,
+                termsHtml: termsEdited ? termsContent : undefined
             };
 
 
@@ -437,9 +466,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                         </div>
 
                         <div className="col-span-2">
-                            <label className="label">
-                                <span className="label-text text-sm">Numbers Drawn (odds)</span>
-                            </label>
+
                             <div className="grid grid-cols-3 gap-2">
                                 <div>
                                   <label className="label h-6 mb-1">
@@ -496,9 +523,11 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                     <div className="primary-divider"></div>
 
                     {/* Heading for discount section */}
-                    <div className="text-base font-bold text-left mb-5">
-                        Exclusive Discounts and Perks
-
+                    <div className="flex items-center justify-between text-base font-bold text-left mb-5">
+                        <span>Exclusive Discounts and Perks</span>
+                        <button type="button" onClick={openTermsModal} className="btn btn-sm btn-outline">
+                            {termsEdited ? 'Edit Terms & Conditions' : 'Add Terms & Conditions'}
+                        </button>
                     </div>
 
                     <div className="grid grid-cols-6 gap-2">
@@ -631,6 +660,12 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                             }
                             type="simple-outline"
                         />
+                        <div className="mt-4">
+                            <p className="text-sm text-gray-600">Terms & Conditions for this draw. Edits here create a copy for this draw only and do not change the default terms.</p>
+                            <div className="mt-2 flex gap-2">
+                                <button type="button" onClick={openTermsModal} className="btn btn-xs btn-primary">{termsEdited ? '✎ Edit Terms' : '+ New Terms'}</button>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Add error display */}
@@ -652,6 +687,47 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                     </button>
                 </form>
             </div>
+
+            {/* Terms & Conditions Modal */}
+            {showTermsModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-hidden">
+                    <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl p-4 max-h-[90vh] flex flex-col overflow-hidden">
+                        <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                            <h3 className="text-lg font-semibold">{termsEdited ? 'Edit Terms & Conditions (this draw)' : 'New Terms & Conditions (this draw)'}</h3>
+                            <button onClick={closeTermsModal} className="btn btn-sm">✕</button>
+                        </div>
+                        <div className="border rounded-lg flex-1 overflow-y-scroll">
+                            {termsLoading ? (
+                                <div className="flex items-center justify-center h-full"><span className="loading loading-dots loading-md"></span></div>
+                            ) : (
+                                <div className="h-full overflow-hidden">
+                                    <ReactQuill 
+                                        theme="snow" 
+                                        value={termsContent} 
+                                        onChange={setTermsContent} 
+                                        style={{ height: '100%' }}
+                                        modules={{
+                                            toolbar: [
+                                                [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                                                ['bold', 'italic', 'underline', 'strike'],
+                                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                [{ 'color': [] }, { 'background': [] }],
+                                                [{ 'align': [] }],
+                                                ['link', 'blockquote', 'code-block'],
+                                                ['clean']
+                                            ],
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex justify-end gap-2 mt-3 flex-shrink-0">
+                            <button className="btn" onClick={closeTermsModal}>Cancel</button>
+                            <button className="btn btn-primary" onClick={saveTermsModal}>Save</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

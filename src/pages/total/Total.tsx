@@ -196,7 +196,7 @@ const Total = () => {
                                         <span className="label-text text-secondary ml-2">
                                             I agree to the{' '}
                                             <a
-                                                href="https://vivaclub.io/terms-conditions"
+                                                href={`/terms${drawId ? `?drawId=${drawId}` : ''}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="text-primary hover:underline"

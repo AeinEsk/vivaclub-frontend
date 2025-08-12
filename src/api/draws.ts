@@ -30,7 +30,8 @@ export const createDraw = (drawData: DrawFormData) => {
         ticketCap: drawData.ticketCap,
         numbersLength: drawData.numbersLength,
         numbersFrom: drawData.numbersFrom,
-        numbersTo: drawData.numbersTo
+        numbersTo: drawData.numbersTo,
+        termsHtml: drawData.termsHtml
     };
 
     return axiosInstance.post(CREATE_DRAW, payload);
