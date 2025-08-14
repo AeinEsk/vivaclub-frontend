@@ -8,6 +8,7 @@ const DRAW_STATS = '/api/club-owner/draw/';
 const UPLOAD_IMAGE = '/api/upload/';
 const DRAW_MEMBERSHIPS = '/api/club-owner/draw/membership/';
 const DELETE_DRAW = '/api/club-owner/draw/';
+const UPDATE_DRAW = '/api/club-owner/draw/';
 
 const buildQueryString = (filters: Record<string, any>) => {
     return Object.entries(filters)
@@ -28,10 +29,9 @@ export const createDraw = (drawData: DrawFormData) => {
         imageId: drawData.imageId,
         discounts: drawData.discounts,
         ticketCap: drawData.ticketCap,
-        numbersLength: drawData.numbersLength,
-        numbersFrom: drawData.numbersFrom,
-        numbersTo: drawData.numbersTo,
-        termsHtml: drawData.termsHtml
+        // numbers settings are calculated server-side
+        termsHtml: drawData.termsHtml,
+        emailWinner: drawData.emailWinner
     };
 
     return axiosInstance.post(CREATE_DRAW, payload);
@@ -64,4 +64,8 @@ export const getDrawMembeships = (drawId: string, membersFilter: DrawMembersFilt
 
 export const cancelDraw = (drawId: string) => {
     return axiosInstance.delete(`${DELETE_DRAW}${drawId}`);
+};
+
+export const updateDraw = (drawId: string, payload: Partial<DrawFormData>) => {
+    return axiosInstance.put(`${UPDATE_DRAW}${drawId}`, payload);
 };

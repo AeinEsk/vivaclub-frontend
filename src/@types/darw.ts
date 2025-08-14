@@ -9,10 +9,8 @@ export type DrawFormData = {
     currency: string;
     discounts: DiscountData[];
     ticketCap?: number;
-    numbersLength?: number;
-    numbersFrom?: number;
-    numbersTo?: number;
     termsHtml?: string;
+    emailWinner?: boolean;
 };
 export interface DiscountData {
     type: string;
@@ -31,6 +29,7 @@ export type DrawList = {
     updatedAt: string;
     noOfPartic: number;
     deactivatedAt: string;
+    ticketCap?: number | null;
 };
 
 export type DrawListFilter = {

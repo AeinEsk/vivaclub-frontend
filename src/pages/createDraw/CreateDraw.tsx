@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { createDraw, uploadImage } from '../../api/draws';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { createDraw, uploadImage, updateDraw, getDrawInfoById } from '../../api/draws';
 import { PATHS } from '../../routes/routes';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -8,17 +8,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { currency as currencyOptions, drawType, timeZone, discountTypes } from '../../@types/darw';
 import Tooltip from '../../components/tooltip/Tooltip';
 import Alert from '../../components/alert/Alert';
-import { Link } from 'react-router-dom';
+// import { Link } from 'react-router-dom';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { fetchTerms } from '../../api/terms';
+import { FaPen, FaRegFileLines, FaTriangleExclamation } from 'react-icons/fa6';
 
 const calculateEarnings = (entryCost: number) => {
     const participants = 10000;
     const grossRevenue = Math.round(entryCost * participants);
     const platformFee = Math.round(grossRevenue * 0.15);
     const netEarnings = grossRevenue - platformFee;
-    
+
     return {
         participants,
         grossRevenue: grossRevenue.toLocaleString(),
@@ -48,7 +49,7 @@ const schema = z.object({
             message: 'Please enter a valid Entry Cost'
         }),
     runMethod: z.string().nonempty('Draw Type is required'),
-    imageId: z.string().optional(),
+    imageId: z.string().nullable().optional(),
     timezone: z.string().nonempty('Required'),
     currency: z.string().nonempty('Required'),
     discounts: z.array(z.object({
@@ -60,22 +61,8 @@ const schema = z.object({
         .int('Must be an integer')
         .positive('Must be greater than 0')
         .optional(),
-    numbersLength: z
-        .number({ invalid_type_error: 'Numbers drawn must be a number' })
-        .int('Must be an integer')
-        .min(1, 'At least 1 number')
-        .max(20, 'Too many numbers')
-        .optional(),
-    numbersFrom: z
-        .number({ invalid_type_error: 'From must be a number' })
-        .int('Must be an integer')
-        .min(0, 'Min is 0')
-        .optional(),
-    numbersTo: z
-        .number({ invalid_type_error: 'To must be a number' })
-        .int('Must be an integer')
-        .min(1, 'Min is 1')
-        .optional()
+    emailWinner: z.boolean().optional(),
+    // numbers settings are auto-calculated by backend based on ticket cap
 });
 
 // Update validation schema
@@ -98,8 +85,11 @@ const CreateDraw = () => {
     const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [imgLoading, setImgLoading] = useState(false);
+    const [isLocked, setIsLocked] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(false);
     const today = new Date().toISOString().slice(0, 16);
     const navigate = useNavigate();
+    const { drawId } = useParams<{ drawId: string }>();
     // Add state for discount codes
     const [discountItems, setDiscountItems] = useState<Array<{ type: string; code: string }>>([]);
     // Terms modal states
@@ -162,7 +152,8 @@ const CreateDraw = () => {
         handleSubmit,
         setValue,
         formState: { errors },
-        watch
+        watch,
+        reset
     } = useForm<FormData>({
         resolver: zodResolver(validationSchema),
         defaultValues: {
@@ -175,41 +166,82 @@ const CreateDraw = () => {
             timezone: 'Australia/Sydney',
             currency: 'AUD',
             ticketCap: undefined,
-            numbersLength: 7,
-            numbersFrom: 0,
-            numbersTo: 13
+            emailWinner: true
         }
     });
 
     const entryCost = watch('entryCost');
     const currency = watch('currency');
 
+    // Load draw if in edit mode
+    useEffect(() => {
+        const load = async () => {
+            if (!drawId) return;
+            try {
+                setInitialLoading(true);
+                const res = await getDrawInfoById(drawId);
+                const d = res.data;
+                const formattedRunAt = new Date(d.runAt).toISOString().slice(0, 16);
+                reset({
+                    name: d.name,
+                    runAt: formattedRunAt,
+                    prize: d.prize,
+                    entryCost: Number(d.entryCost),
+                    runMethod: d.runMethod,
+                    imageId: d.imageId ?? undefined,
+                    timezone: d.timezone,
+                    currency: d.currency,
+                    ticketCap: d.ticketCap ?? undefined,
+                    emailWinner: d.emailWinner !== false,
+                    discounts: d.discounts || []
+                });
+                setIsLocked(((d.noOfPartic ?? 0) > 0) || !!d.deactivatedAt);
+                // preload discounts and terms UI state
+                if (Array.isArray(d.discounts)) {
+                    setDiscountItems(d.discounts);
+                }
+                if (d.termsHtml) {
+                    setTermsContent(d.termsHtml);
+                    setTermsEdited(true);
+                }
+            } catch (e) {
+                setError('Failed to load draw');
+            } finally {
+                setInitialLoading(false);
+            }
+        };
+        load();
+    }, [drawId, reset]);
+
     const onSubmit = async (data: FormData) => {
         try {
             setLoading(true);
             setError('');
 
-            const formDataWithDiscounts = {
+            const formDataWithDiscounts: any = {
                 ...data,
                 discounts: discountItems,
                 termsHtml: termsEdited ? termsContent : undefined
             };
+            // Avoid clearing image unless a new one is uploaded
+            if (drawId && !data.imageId) {
+                delete formDataWithDiscounts.imageId;
+            }
 
-
-            const response = await createDraw(formDataWithDiscounts);
+            const response = drawId
+                ? await updateDraw(drawId, formDataWithDiscounts)
+                : await createDraw(formDataWithDiscounts);
 
             if (response && response.data) {
-                navigate(PATHS.WELCOME);
+                navigate(drawId ? PATHS.DRAW_LIST : PATHS.WELCOME);
             } else {
-                setError('Failed to create draw. Please try again.');
+                setError(drawId ? 'Failed to update draw. Please try again.' : 'Failed to create draw. Please try again.');
                 setLoading(false);
             }
         } catch (error: any) {
             console.error('Detailed error:', error);
-            setLoading(false);
-            // const errorMessage = error.response?.data?.message || 'An error occurred while creating the draw';
-            // setError(errorMessage);
-            console.error('Error creating draw:', error);
+            const message = error?.response?.data?.error || (drawId ? 'Draw cannot be edited.' : 'An error occurred while creating the draw');
+            setError(message);
         } finally {
             setLoading(false);
         }
@@ -233,11 +265,24 @@ const CreateDraw = () => {
         setDiscountItems(discountItems.filter((_, i) => i !== index));
     };
 
+    if (initialLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <span className="loading loading-ring loading-lg"></span>
+            </div>
+        );
+    }
+
     return (
         <div className="flex items-center justify-center">
             {imgLoading && <LoadingOverlay />}
             <div className="w-full max-w-sm lg:max-w-[50%] shadow-xl py-10 px-5 rounded-2xl border border-border/30 bg-white">
                 <form onSubmit={handleSubmit(onSubmit)} noValidate>
+                    {isLocked && (
+                        <div className="mb-4">
+                            <Alert type="simple-outline" message={'This draw can no longer be edited because tickets have been sold or a payment is in progress.'} />
+                        </div>
+                    )}
                     <div>
                         <label className="label">
                             <span className="label-text">
@@ -253,7 +298,7 @@ const CreateDraw = () => {
                             type="text"
                             placeholder="Enter draw name"
                             className="input input-bordered w-full"
-                            disabled={loading}
+                            disabled={loading || isLocked}
                             {...register('name')}
                         />
                         <label className="label">
@@ -279,7 +324,7 @@ const CreateDraw = () => {
                             <input
                                 type="datetime-local"
                                 className="input input-bordered  w-full"
-                                disabled={loading}
+                                disabled={loading || isLocked}
                                 min={today}
                                 {...register('runAt')}
                             />
@@ -297,7 +342,7 @@ const CreateDraw = () => {
                             </label>
                             <select
                                 className="select select-bordered  w-full"
-                                disabled={loading}
+                                disabled={loading || isLocked}
                                 {...register('timezone')}>
                                 <option value="" disabled>
                                     Choose Timezone
@@ -331,7 +376,7 @@ const CreateDraw = () => {
                         <textarea
                             placeholder="Enter draw prize"
                             className="textarea input-bordered  w-full"
-                            disabled={loading}
+                            disabled={loading || isLocked}
                             {...register('prize')}
                         />
                         <label className="label">
@@ -359,7 +404,7 @@ const CreateDraw = () => {
                                     placeholder="Enter entry cost"
                                     step="any"
                                     className="input input-bordered w-full"
-                                    disabled={loading}
+                                    disabled={loading || isLocked}
                                     {...register('entryCost', { valueAsNumber: true })}
                                     min={0}
                                 />
@@ -378,7 +423,7 @@ const CreateDraw = () => {
                                 </label>
                                 <select
                                     className="select select-bordered w-full"
-                                    disabled={loading}
+                                    disabled={loading || isLocked}
                                     defaultValue="AUD"
                                     {...register('currency')}>
                                     <option value="" disabled>
@@ -423,7 +468,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                         </label>
                         <select
                             className="select select-bordered  w-full"
-                            disabled={loading}
+                            disabled={loading || isLocked}
                             {...register('runMethod')}>
                             <option value="" disabled>
                                 Choose Draw Type
@@ -452,7 +497,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                                 type="number"
                                 placeholder="e.g. 1000"
                                 className="input input-bordered w-full"
-                                disabled={loading}
+                                disabled={loading || isLocked}
                                 {...register('ticketCap', { valueAsNumber: true })}
                                 min={1}
                             />
@@ -465,58 +510,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                             </label>
                         </div>
 
-                        <div className="col-span-2">
-
-                            <div className="grid grid-cols-3 gap-2">
-                                <div>
-                                  <label className="label h-6 mb-1">
-                                    <span className="label-text text-xs">Numbers drawn per ticket</span>
-                                  </label>
-                                  <input
-                                    type="number"
-                                    placeholder="Length"
-                                    className="input input-bordered w-full"
-                                    disabled={loading}
-                                    {...register('numbersLength', { valueAsNumber: true })}
-                                    min={1}
-                                    max={20}
-                                  />
-                                </div>
-                                <div>
-                                  <label className="label h-6 mb-1">
-                                    <span className="label-text text-xs">Range start (From)</span>
-                                  </label>
-                                  <input
-                                    type="number"
-                                    placeholder="From"
-                                    className="input input-bordered w-full"
-                                    disabled={loading}
-                                    {...register('numbersFrom', { valueAsNumber: true })}
-                                    min={0}
-                                  />
-                                </div>
-                                <div>
-                                  <label className="label h-6 mb-1">
-                                    <span className="label-text text-xs">Range end (To)</span>
-                                  </label>
-                                  <input
-                                    type="number"
-                                    placeholder="To"
-                                    className="input input-bordered w-full"
-                                    disabled={loading}
-                                    {...register('numbersTo', { valueAsNumber: true })}
-                                    min={1}
-                                  />
-                                </div>
-                            </div>
-                            <label className="label">
-                                {(errors.numbersLength || errors.numbersFrom || errors.numbersTo) && (
-                                    <span className="label-text-alt text-red-600 font-semibold">
-                                        {(errors.numbersLength?.message || errors.numbersFrom?.message || errors.numbersTo?.message) as string}
-                                    </span>
-                                )}
-                            </label>
-                        </div>
+                        <div className="col-span-2"></div>
                     </div>
 
                     {/* Divider above */}
@@ -525,9 +519,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                     {/* Heading for discount section */}
                     <div className="flex items-center justify-between text-base font-bold text-left mb-5">
                         <span>Exclusive Discounts and Perks</span>
-                        <button type="button" onClick={openTermsModal} className="btn btn-sm btn-outline">
-                            {termsEdited ? 'Edit Terms & Conditions' : 'Add Terms & Conditions'}
-                        </button>
+
                     </div>
 
                     <div className="grid grid-cols-6 gap-2">
@@ -543,7 +535,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                             </label>
                             <select
                                 className="select select-bordered w-full h-9 min-h-[36px] text-sm"
-                                disabled={loading}
+                                disabled={loading || isLocked}
                                 {...register('discounts.0.type')}>
                                 <option value="">Select</option>
                                 {discountTypes.map((type, index) => (
@@ -563,19 +555,17 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                                     type="text"
                                     placeholder="Enter website code"
                                     className="w-full input input-bordered flex-1 h-9 min-h-[36px] text-sm"
-                                    disabled={!watch('discounts.0.type') || loading}
+                                    disabled={!watch('discounts.0.type') || loading || isLocked}
                                     {...register('discounts.0.code')}
                                 />
                                 <button
                                     type="button"
                                     onClick={handleAddDiscount}
                                     className={`btn h-9 min-h-[36px] ${watch('discounts.0.type') && watch('discounts.0.code')
-                                            ? 'btn-primary'
-                                            : 'btn-disabled'
+                                        ? 'btn-primary'
+                                        : 'btn-disabled'
                                         }`}
-                                    disabled={
-                                        !watch('discounts.0.type') || !watch('discounts.0.code') || loading
-                                    }>
+                                    disabled={!watch('discounts.0.type') || !watch('discounts.0.code') || loading || isLocked}>
                                     Add
                                 </button>
                             </div>
@@ -626,7 +616,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                             className="file-input file:bg-primary/10 file:text-primary file:border-none file-input-bordered w-full"
                             accept=".jpeg, .jpg, .png"
                             onChange={handleFileChange}
-                            disabled={loading}
+                            disabled={loading || isLocked}
                         />
                         <div className="label">
                             {!error ? (
@@ -646,24 +636,72 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                         </div>
                     </div>
 
-                    <div className="mt-4 mb-5 ">
+                    <div>
+                        <label className="label">
+                            <span className="label-text text-sm">
+                                Email Winner{' '}
+                                <Tooltip
+                                    text="Choose whether to automatically email the winner when the draw is completed. You can always contact them manually if needed."
+                                    direction="tooltip-left"
+                                />
+                            </span>
+                        </label>
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="checkbox"
+                                className="toggle toggle-primary"
+                                checked={watch('emailWinner') !== false}
+                                onChange={(e) => setValue('emailWinner', e.target.checked)}
+                                disabled={loading || isLocked}
+                            />
+                            <span className="text-sm text-gray-600">
+                                Automatically email the winner when draw is completed
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 mb-5 space-y-4">
                         <Alert
                             message={
-                                "The draw can't be edited after creation, only canceled. All entries will be refunded if the draw is canceled"
+                                'You can edit this draw until the first ticket is sold or a payment is in progress. After that, only cancellation is allowed.'
                             }
                             type="simple-outline"
                         />
-                        <br />
                         <Alert
                             message={
-                                "If your prize money is over $30,000 please contact us at hello@vivaclub.io to to arrange your trade promotional license."
+                                'If your prize money is over $30,000 please contact us at hello@vivaclub.io to arrange your trade promotional license.'
                             }
                             type="simple-outline"
                         />
-                        <div className="mt-4">
-                            <p className="text-sm text-gray-600">Terms & Conditions for this draw. Edits here create a copy for this draw only and do not change the default terms.</p>
-                            <div className="mt-2 flex gap-2">
-                                <button type="button" onClick={openTermsModal} className="btn btn-xs btn-primary">{termsEdited ? '✎ Edit Terms' : '+ New Terms'}</button>
+
+                        {/* Terms block */}
+                        <div className="rounded-xl border border-gray-200 bg-white p-5">
+                            <div className="flex items-start gap-3">
+                                <div className="shrink-0 rounded-xl bg-purple-100 text-purple-600 p-3">
+                                    <FaRegFileLines className="text-lg" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-semibold text-left">Draw Terms &amp; Conditions</p>
+                                    <p className="mt-1 text-sm text-gray-600 text-left">
+                                        The default VivaClub terms will be applied to your draw. You can edit them here to add or remove any clauses specific to this draw.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="mt-4 text-left">
+                                <button
+                                    type="button"
+                                    onClick={openTermsModal}
+                                    className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                                    disabled={isLocked}
+                                >
+                                    <FaPen /> Edit Terms
+                                </button>
+                            </div>
+                            <div className="mt-4 flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2">
+                                <FaTriangleExclamation className="mt-0.5 text-yellow-600" />
+                                <p className="text-xs text-gray-700 text-left">
+                                    Once published, terms cannot be edited—only canceled.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -678,11 +716,11 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                     <button
                         type="submit"
                         className="btn btn-primary w-full rounded-btn font-normal mt-4 bottom-0"
-                        disabled={loading}>
+                        disabled={loading || isLocked}>
                         {loading ? (
                             <span className="loading loading-dots loading-md items-center"></span>
                         ) : (
-                            'Publish'
+                            drawId ? 'Update Draw' : 'Publish'
                         )}
                     </button>
                 </form>
@@ -701,16 +739,16 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                                 <div className="flex items-center justify-center h-full"><span className="loading loading-dots loading-md"></span></div>
                             ) : (
                                 <div className="h-full overflow-hidden">
-                                    <ReactQuill 
-                                        theme="snow" 
-                                        value={termsContent} 
-                                        onChange={setTermsContent} 
+                                    <ReactQuill
+                                        theme="snow"
+                                        value={termsContent}
+                                        onChange={setTermsContent}
                                         style={{ height: '100%' }}
                                         modules={{
                                             toolbar: [
                                                 [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
                                                 ['bold', 'italic', 'underline', 'strike'],
-                                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                                                 [{ 'color': [] }, { 'background': [] }],
                                                 [{ 'align': [] }],
                                                 ['link', 'blockquote', 'code-block'],

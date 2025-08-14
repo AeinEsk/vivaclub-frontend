@@ -67,6 +67,13 @@ const MenuCol = ({ drawId }: MenuCol) => {
                             Memberships
                         </a>
                     </li>
+                    <li>
+                        <a
+                            className="text-sm"
+                            onClick={() => navigate(PATHS.EDIT_DRAW.replace(':drawId', drawId))}>
+                            Edit Draw
+                        </a>
+                    </li>
                 </ul>
             </div>
         </td>

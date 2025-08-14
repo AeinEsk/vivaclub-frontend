@@ -17,6 +17,7 @@ interface draw {
     runAt: string;
     deactivatedAt: string;
     currency: number;
+    ticketCap?: number | null;
 }
 
 const DrawDetails = () => {
@@ -47,6 +48,7 @@ const DrawDetails = () => {
     const today = new Date();
     const formattedDate = today.toISOString();
     const [cancelLoading, setCancelLoading] = useState(false);
+    const [cancelError, setCancelError] = useState<string>('');
     const [showPopup, setShowPopup] = useState({
         state: false,
         text: '',
@@ -113,13 +115,15 @@ const DrawDetails = () => {
     const handleCancelDraw = async (drawId: string) => {
         try {
             setCancelLoading(true);
+            setCancelError('');
             await cancelDraw(drawId);
             setShowPopup({ state: false, text: '', drawId: '' });
             setCancelLoading(false);
             navigate(-1);
         } catch (error: any) {
             setCancelLoading(false);
-            console.error(error.response);
+            const message = error?.response?.data?.error || 'Failed to cancel draw';
+            setCancelError(message);
         }
     };
 
@@ -238,6 +242,12 @@ const DrawDetails = () => {
                                         </div>
                                     </div>
 
+                                    {cancelError && (
+                                        <div className="alert alert-error mb-4">
+                                            <span className="text-xs">{cancelError}</span>
+                                        </div>
+                                    )}
+
                                     {numbersFrequency && numbersFrequency.length > 0 && (
                                         <div className="bg-gray-50 p-3 rounded-xl">
                                             <div className="flex gap-1 items-center text-xs text-primary">
@@ -255,17 +265,23 @@ const DrawDetails = () => {
                                     )}
 
                                     {!drawInfo.deactivatedAt && handleStatus(drawInfo.runAt) ? (
-                                        <div
-                                            className="flex justify-center card bg-red-50 text-red-600 cursor-pointer font-bold h-12 p-0 mt-5"
-                                            onClick={() =>
-                                                setShowPopup({
-                                                    state: true,
-                                                    drawId: drawInfo.id,
-                                                    text: 'Are you sure you want to cancel this draw? All entries will be refunded if the draw is canceled.'
-                                                })
-                                            }>
-                                            Cancel Draw
-                                        </div>
+                                        ticketCap !== null && ticketCap > 0 && ticketCount >= ticketCap ? (
+                                            <div className="flex justify-center card bg-green-100 text-green-700 font-bold h-12 p-0 mt-5">
+                                                Full Capacity
+                                            </div>
+                                        ) : (
+                                            <div
+                                                className="flex justify-center card bg-red-50 text-red-600 cursor-pointer font-bold h-12 p-0 mt-5"
+                                                onClick={() =>
+                                                    setShowPopup({
+                                                        state: true,
+                                                        drawId: drawInfo.id,
+                                                        text: 'Are you sure you want to cancel this draw? All entries will be refunded if the draw is canceled.'
+                                                    })
+                                                }>
+                                                Cancel Draw
+                                            </div>
+                                        )
                                     ) : (
                                         <div className="flex justify-center card bg-orange-400 text-white font-bold h-12 p-0 mt-5">
                                             {drawInfo.deactivatedAt ? 'Draw Cancelled' : 'Expired'}

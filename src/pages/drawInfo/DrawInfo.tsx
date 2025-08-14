@@ -3,7 +3,7 @@ import InfoBtn from '../../components/infoButton/InfoBtn';
 import { useEffect, useState } from 'react';
 import Loading from '../../components/loading/Loading';
 import { PATHS } from '../../routes/routes';
-import { getDrawInfoById } from '../../api/draws';
+import { getDrawInfoById, getDrawStats } from '../../api/draws';
 import { HOST_API } from '../../api/config';
 import { dateConverter } from '../../components/dateConverter/DateConverter';
 import {
@@ -100,7 +100,7 @@ const DrawInfo = () => {
                     <div className="flex flex-col items-center justify-center">
                         {/* Simple Image Modal */}
                         {showFullImage && (
-                            <div 
+                            <div
                                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
                                 onClick={() => setShowFullImage(false)}
                             >

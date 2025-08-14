@@ -8,6 +8,7 @@ export const PATHS = {
     EDIT_PACKAGE: '/profile/edit-package',
     PACKAGE_DITAILS: '/profile/package-details/:packageId',
     CREATE_DRAW: '/profile/create-draw',
+    EDIT_DRAW: '/profile/edit-draw/:drawId',
     TERMS: '/profile/terms',
     PUBLIC_TERMS: '/terms',
     DRAW_LIST: '/profile/draw-list',

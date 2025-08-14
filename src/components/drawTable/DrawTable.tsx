@@ -17,7 +17,7 @@ interface Draw {
 const DrawTable: React.FC<Draw> = ({ drawData, from, to, loading, compact }) => {
     const today = new Date();
     const formattedDate = today.toISOString();
-    console.log(from,to);
+    console.log(from, to);
     const handleStatus = (date: string) => {
         if (date > formattedDate) {
             return true;
@@ -93,12 +93,15 @@ const DrawTable: React.FC<Draw> = ({ drawData, from, to, loading, compact }) => 
                                                         draw.deactivatedAt
                                                             ? 'Cancelled'
                                                             : handleStatus(draw.runAt)
-                                                              ? 'Published'
-                                                              : 'Expired'
+                                                                ? ((draw.ticketCap ?? 0) > 0 && draw.noOfPartic >= (draw.ticketCap ?? 0) ? 'Full Capacity' : 'Published')
+                                                                : 'Expired'
                                                     }>
-                                                    <div className={`status-icon-wrapper ${
-                                                        handleStatus(draw.runAt) ? 'active' : 'inactive'
-                                                    }`}>
+                                                    <div className={`status-icon-wrapper ${(draw.deactivatedAt
+                                                        ? false
+                                                        : ((draw.ticketCap ?? 0) > 0 && draw.noOfPartic >= (draw.ticketCap ?? 0)))
+                                                        ? 'inactive'
+                                                        : (handleStatus(draw.runAt) ? 'active' : 'inactive')
+                                                        }`}>
                                                         {draw.deactivatedAt ? (
                                                             <FaBan className="status-icon" />
                                                         ) : handleStatus(draw.runAt) ? (
@@ -114,8 +117,8 @@ const DrawTable: React.FC<Draw> = ({ drawData, from, to, loading, compact }) => 
                                                     {draw.deactivatedAt
                                                         ? 'Cancelled'
                                                         : handleStatus(draw.runAt)
-                                                          ? 'Published'
-                                                          : 'Expired'}
+                                                            ? ((draw.ticketCap ?? 0) > 0 && draw.noOfPartic >= (draw.ticketCap ?? 0) ? 'Full Capacity' : 'Published')
+                                                            : 'Expired'}
                                                 </div>
                                             )}
                                         </div>

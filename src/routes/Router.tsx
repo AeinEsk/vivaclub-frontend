@@ -116,6 +116,16 @@ const Router = () => {
                     </ProtectedRoute>
                 }
             />
+            <Route
+                path={PATHS.EDIT_DRAW}
+                element={
+                    <ProtectedRoute>
+                        <Header title="Edit Draw" backIcon={true}>
+                            <CreateDraw />
+                        </Header>
+                    </ProtectedRoute>
+                }
+            />
 
             <Route
                 path={PATHS.TERMS}
