@@ -141,7 +141,8 @@ const Total = () => {
                                         className={`btn ${activeBtn === 3 ? 'bg-primary/5 border-primary/20 text-[#6D28D9]' : 'btn-outline'} w-full rounded-btn border-border flex justify-start relative hover:bg-primary/20 hover:text-black`}
                                         onClick={() => {
                                             setActiveBtn(3);
-                                            setPaymentMethod('apple-pay');
+                                            // Apple Pay appears under Stripe's 'card' in Checkout when enabled
+                                            setPaymentMethod('card');
                                         }}
                                         disabled={loading}>
                                         <img src={applePay} alt="apple pay" className="w-8 h-8 m-0 flex mr-2" />
@@ -153,7 +154,8 @@ const Total = () => {
                                         className={`btn ${activeBtn === 4 ? 'bg-primary/5 border-primary/20 text-[#6D28D9]' : 'btn-outline'} w-full rounded-btn border-border flex justify-start relative hover:bg-primary/20 hover:text-black`}
                                         onClick={() => {
                                             setActiveBtn(4);
-                                            setPaymentMethod('google-pay');
+                                            // Google Pay appears under Stripe's 'card' in Checkout when enabled
+                                            setPaymentMethod('card');
                                         }}
                                         disabled={loading}>
                                         <img src={googlePay} alt="google pay" className="w-8 h-8 m-0 flex mr-2" />
@@ -223,6 +225,19 @@ const Total = () => {
                                         'Complete Payment'
                                     )}
                                 </button>
+                                <div className="mt-4 text-center">
+                                    <span className="text-xs text-gray-400">
+                                        Powered by{' '}
+                                        <a
+                                            href="https://vivaclub.io"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="underline text-gray-400 hover:text-gray-500"
+                                        >
+                                            VivaClub
+                                        </a>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
