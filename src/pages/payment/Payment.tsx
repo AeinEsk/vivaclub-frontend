@@ -120,6 +120,20 @@ const Payment = () => {
                                 Back to Draws
                             </button>
                         )}
+
+                        <div className="mt-4 text-center">
+                            <span className="text-xs text-gray-400">
+                                Powered by{' '}
+                                <a
+                                    href="https://vivaclub.io"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline text-gray-400 hover:text-gray-500"
+                                >
+                                    VivaClub
+                                </a>
+                            </span>
+                        </div>
                     </div>
                 );
             case 'error':
