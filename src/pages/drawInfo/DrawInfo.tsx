@@ -236,6 +236,19 @@ const DrawInfo = () => {
                                         {drawInfo.deactivatedAt ? 'Draw Cancelled' : 'Expired'}
                                     </div>
                                 )}
+                                <div className="mt-4 mb-4 text-center">
+                                    <span className="text-xs text-gray-400">
+                                        Powered by{' '}
+                                        <a
+                                            href="https://vivaclub.io"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="underline text-gray-400 hover:text-gray-500"
+                                        >
+                                            VivaClub
+                                        </a>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
