@@ -641,7 +641,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                             <span className="label-text text-sm">
                                 Email Winner{' '}
                                 <Tooltip
-                                    text="Choose whether to automatically email the winner when the draw is completed. You can always contact them manually if needed."
+                                    text="Choose whether to automatically email the winner when the draw is completed."
                                     direction="tooltip-left"
                                 />
                             </span>
