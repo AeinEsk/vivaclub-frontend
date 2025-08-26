@@ -141,11 +141,11 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     const handleSignUp = async (email: string, password: string, otp: string): Promise<string> => {
         try {
             setLoading(true);
-            const { status, data } = await otpRegister(email, password, otp);
+            const { status } = await otpRegister(email, password, otp);
             if (status === 200) {
-                handleSetAuthToken(email, data?.token);
-                navigate(PATHS.WELCOME);
+                // Do not set token; account pending approval
                 setLoading(false);
+                return 'success';
             }
             return 'success';
         } catch (error: any) {

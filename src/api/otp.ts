@@ -1,6 +1,7 @@
 import { axiosInstance } from '../utils/axios';
 
 const OTP = '/auth/otp';
+const EXISTS = '/auth/exists';
 const OTP_LOGIN = '/auth/login-otp';
 const OTP_REGISTER = '/auth/register';
 const PAYMENT_OTP = '/auth/customer/otp';
@@ -11,6 +12,13 @@ export const otpRequest = (email: string) => {
     const payload = { username: email };
     return axiosInstance.post(OTP, payload);
 };
+
+export const checkUserExists = (email: string) => {
+    const params = new URLSearchParams({ username: email });
+    return axiosInstance.get(`${EXISTS}?${params.toString()}`);
+};
+
+// createOnly/checkOnly are no longer used; OTP flow is restored
 
 export const otpLogin = (username: string, otp: string) => {
     const payload = {

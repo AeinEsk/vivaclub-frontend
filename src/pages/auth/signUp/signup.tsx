@@ -3,16 +3,18 @@ import facebookSVG from '../../../assets/facebook.svg';
 import eyeSVG from '../../../assets/eye.svg';
 import eyeHideSVG from '../../../assets/eyeHide.svg';
 
-import { Link, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../../contexts/Auth/AuthProvider';
 import Alert from '../../../components/alert/Alert';
 import { PATHS } from '../../../routes/routes';
 import GoogleAuthBtn from '../../../components/auth/GoogleAuthBtn';
+import { checkUserExists } from '../../../api/otp';
 
 const signUp = () => {
     const { loading } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [showPassword, setShowPassword] = useState<boolean>(false);
     const [password, setPassword] = useState<string>('');
@@ -20,6 +22,7 @@ const signUp = () => {
     const [email, setEmail] = useState<string>('');
     const [alert, setAlert] = useState<boolean>(false);
     const [message, setMessage] = useState<string>('');
+    const [alertType, setAlertType] = useState<'alert-warning' | 'alert-success'>('alert-warning');
 
     const togglePasswordVisibility = () => {
         setShowPassword((prev) => !prev);
@@ -40,16 +43,44 @@ const signUp = () => {
         }
     };
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (password === confirmPassword) {
-            setAlert(false);
-            navigate(PATHS.OTP, { state: { email, password, state: 'register' } });
-        } else {
+        if (password !== confirmPassword) {
             setAlert(true);
             setMessage('Passwords do not match!');
+            setAlertType('alert-warning');
+            return;
         }
+        // Check if user exists before proceeding
+        try {
+            const { data } = await checkUserExists(email);
+            if (data?.exists && data?.isVerified) {
+                setAlert(true);
+                setAlertType('alert-warning');
+                setMessage('This email is already registered. Please sign in or reset your password.');
+                return;
+            }
+        } catch {
+            // If check fails, continue to OTP to avoid blocking signup
+        }
+
+        // Navigate to OTP page to complete registration (like before)
+        setAlert(false);
+        navigate(PATHS.OTP, { state: { email, password, state: 'register' } });
     };
+
+    // If returned from OTP with success, show success banner
+    useEffect(() => {
+        const registered = (location.state as any)?.registered;
+        if (registered) {
+            setAlert(true);
+            setAlertType('alert-success');
+            setMessage('Thanks for signing up! A member of our sales team will be in touch shortly to help set things up for you.');
+            // Optional: clear state to avoid persistent banner on refresh
+            window.history.replaceState({}, document.title);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <>
@@ -138,9 +169,22 @@ const signUp = () => {
                                 </div>
                             </div>
                             {alert ? (
-                                <div className="mb-5">
-                                    <Alert message={message} type={'alert-warning'} />
-                                </div>
+                                alertType === 'alert-success' ? (
+                                    <div className="mb-5">
+                                        <div className="inline-block rounded-2xl bg-gradient-to-r from-[#69D17A] to-[#51C173] text-white shadow-md px-4 py-3 text-left">
+                                            <div className="flex items-start gap-3">
+                                                <span className="text-xl leading-none mt-0.5">🎉</span>
+                                                <p className="m-0 text-white text-base md:text-base leading-6 text-left">
+                                                    {message}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mb-5">
+                                        <Alert message={message} type={alertType} />
+                                    </div>
+                                )
                             ) : undefined}
 
                             <button
