@@ -2,8 +2,8 @@ export const handleCopyLink = (
     linkToCopy: string,
     setIsCopied: React.Dispatch<React.SetStateAction<boolean>>
 ) => {
-    const host = window.location.host;
-    const fullUrl = host + linkToCopy;
+    const origin = window.location.origin;
+    const fullUrl = origin + linkToCopy;
 
     // Check if clipboard API is available
     if (navigator.clipboard && window.isSecureContext) {

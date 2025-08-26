@@ -39,7 +39,7 @@
     .add-button {
         @apply flex items-center justify-center shrink-0 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 text-white gap-2
              hover:from-violet-700 hover:to-indigo-700 transition-all duration-200 font-medium text-sm md:text-base
-             shadow-[0_4px_20px_-5px_rgba(79,70,229,0.4)] hover:shadow-[0_4px_25px_-5px_rgba(79,70,229,0.5)];
+             shadow-[0_4px_20px_-5px_rgba(79,70,229,0.4)] hover:shadow-[0_4px_25px_-5px_rgba(79,70,229,0.5)] w-36;
     }
 
     .status-icon-wrapper {

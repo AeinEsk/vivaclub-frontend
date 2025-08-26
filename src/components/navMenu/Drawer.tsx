@@ -41,15 +41,22 @@ const Drawer = () => {
 
                         <div className="[&>li]:mb-2">
                             <li>
+                                <Link to="/profile/create-draw" className="mx-1 no-underline">
+                                    <FaPlus className="text-lg" />
+                                    Create Draw
+                                </Link>
+                            </li>
+                            <li>
                                 <Link to="/profile/create-package" className="mx-1 no-underline">
                                     <FaPlus className="text-lg" />
                                     Create Membership
                                 </Link>
                             </li>
+
                             <li>
-                                <Link to="/profile/create-draw" className="mx-1 no-underline">
+                                <Link to={PATHS.CREATE_PROMO_DRAW} className="mx-1 no-underline">
                                     <FaPlus className="text-lg" />
-                                    Create Draw
+                                    Create Promotional Draw
                                 </Link>
                             </li>
                             <div className="h-[1px] w-full bg-gray-100 my-5"></div>

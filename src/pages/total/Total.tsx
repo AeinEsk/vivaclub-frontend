@@ -13,6 +13,7 @@ const Total = () => {
     const { mode, drawId, numTickets, totalCost, currency, tireId } = location.state || {};
     const [email, setEmail] = useState<string>('');
     const [message, setMessage] = useState('');
+    const [phone, setPhone] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
     const [isValid, setIsValid] = useState<boolean>(true);
     const [activeBtn, setActiveBtn] = useState<number>(0);
@@ -43,7 +44,8 @@ const Total = () => {
                     count: numTickets,
                     drawId: drawId,
                     email: email,
-                    paymentMethod: paymentMethod
+                    paymentMethod: totalCost === 0 ? 'card' : paymentMethod,
+                    phone
                 };
                 const { data } = await drawPaymentRequest(paymentData);
                 if (data?.paymentUrl) {
@@ -179,6 +181,17 @@ const Total = () => {
                                         disabled={activeBtn === 0}
                                     />
                                 </label>
+                                <div className="mb-2 text-left mt-3">
+                                    <span className="text-left">Phone (optional)</span>
+                                </div>
+                                <input
+                                    type="tel"
+                                    placeholder="Enter your phone"
+                                    className="input input-bordered w-full"
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
+                                    disabled={activeBtn === 0}
+                                />
 
                                 <div className="label">
                                     <span className="label-text-alt text-left text-red-500 flex flex-col">
@@ -213,17 +226,15 @@ const Total = () => {
                                     disabled={
                                         !isValid ||
                                         email === '' ||
-                                        activeBtn === 0 ||
-                                        !acceptedTerms
+                                        (!acceptedTerms) ||
+                                        (totalCost !== 0 && activeBtn === 0)
                                     }
                                     type="button"
                                     className="btn btn-primary w-full mt-4"
                                     onClick={handleCreatePayment}>
                                     {loading ? (
                                         <span className="loading loading-dots loading-md items-center"></span>
-                                    ) : (
-                                        'Complete Payment'
-                                    )}
+                                    ) : totalCost === 0 ? 'Enter Draw' : 'Complete Payment'}
                                 </button>
                                 <div className="mt-4 text-center">
                                     <span className="text-xs text-gray-400">

@@ -6,9 +6,10 @@ interface FilterModalProps {
     isOpen: boolean;
     onClose: () => void;
     onApply: (filters: DrawListFilter) => void;
+    isPromoDraws?: boolean;
 }
 
-const DrawFilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply }) => {
+const DrawFilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply, isPromoDraws = false }) => {
     const { register, handleSubmit, reset } = useForm<DrawListFilter>();
 
     const handleApply = (data: DrawListFilter) => {
@@ -19,6 +20,11 @@ const DrawFilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply 
     const clearFilters = () => {
         reset();
     };
+
+    // Filter run method options for promo draws (exclude "no winner guaranteed")
+    const availableDrawTypes = isPromoDraws 
+        ? drawType.filter(option => option.value !== 'COMPUTER_PICKED_NO_WINNER')
+        : drawType;
 
     return (
         <div className={`modal ${isOpen ? 'modal-open' : ''}`}>
@@ -32,7 +38,7 @@ const DrawFilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply 
                         </label>
                         <select className="select select-bordered" {...register('runMethod')}>
                             <option value="">Select Run Method</option>
-                            {drawType.map((option, index) => (
+                            {availableDrawTypes.map((option, index) => (
                                 <option key={index} value={option.value}>
                                     {option.option}
                                 </option>
@@ -76,55 +82,34 @@ const DrawFilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply 
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 mb-3">
-                        <div className="col-span-1 mr-2">
-                            <label className="label">
-                                <span className="label-text">Entry Cost Min</span>
-                            </label>
-                            <input
-                                type="number"
-                                className="input input-bordered w-full"
-                                placeholder="Entry cost min"
-                                {...register('entryCostMin')}
-                            />
+                    {!isPromoDraws && (
+                        <div className="grid grid-cols-2 mb-3">
+                            <div className="col-span-1 mr-2">
+                                <label className="label">
+                                    <span className="label-text">Entry Cost Min</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    className="input input-bordered w-full"
+                                    placeholder="Entry cost min"
+                                    {...register('entryCostMin')}
+                                />
+                            </div>
+                            <div className="col-span-1 ml-2">
+                                <label className="label">
+                                    <span className="label-text">Entry Cost Max</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    className="input input-bordered w-full"
+                                    placeholder="Entry cost max"
+                                    {...register('entryCostMax')}
+                                />
+                            </div>
                         </div>
-                        <div className="col-span-1 ml-2">
-                            <label className="label">
-                                <span className="label-text">Entry Cost Max</span>
-                            </label>
-                            <input
-                                type="number"
-                                className="input input-bordered w-full"
-                                placeholder="Entry cost max"
-                                {...register('entryCostMax')}
-                            />
-                        </div>
-                    </div>
+                    )}
 
-                    <div className="grid grid-cols-2 mb-3">
-                        <div className="col-span-1 mr-2">
-                            <label className="label">
-                                <span className="label-text">Minimum Prize</span>
-                            </label>
-                            <input
-                                type="number"
-                                className="input input-bordered w-full"
-                                placeholder="Minimum Prize"
-                                {...register('minimumPrize')}
-                            />
-                        </div>
-                        <div className="col-span-1 ml-2">
-                            <label className="label">
-                                <span className="label-text">Maximum Prize</span>
-                            </label>
-                            <input
-                                type="number"
-                                className="input input-bordered w-full"
-                                placeholder="Maximum Prize"
-                                {...register('maximumPrize')}
-                            />
-                        </div>
-                    </div>
+
 
                     <div className="modal-action flex justify-center">
                         <button type="submit" className="btn btn-primary btn-sm w-20 text-white">

@@ -6,6 +6,9 @@ import { Profile } from '../pages/profile';
 import { CreatePackage } from '../pages/createPackage';
 import { PackagesList } from '../pages/packagesList';
 import { CreateDraw } from '../pages/createDraw';
+import { CreatePromoDraw } from '../pages/createPromoDraw';
+import { PromoDrawsList } from '../pages/promoDrawsList';
+import PromoDrawSignup from '../pages/promoDrawSignup/PromoDrawSignup';
 import { PackagesDetails } from '../pages/packagesDetails';
 import { DrawDetails } from '../pages/drawDetails';
 import { DrawsList } from '../pages/drawsList';
@@ -114,6 +117,46 @@ const Router = () => {
                             <CreateDraw />
                         </Header>
                     </ProtectedRoute>
+                }
+            />
+            <Route
+                path={PATHS.CREATE_PROMO_DRAW}
+                element={
+                    <ProtectedRoute>
+                        <Header title="Promotional QR Code Draw" backIcon={true}>
+                            <CreatePromoDraw />
+                        </Header>
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path={PATHS.PROMO_DRAW_LIST}
+                element={
+                    <ProtectedRoute>
+                        <Header title="Your Promotional Draw List" backIcon={true}>
+                            <PromoDrawsList />
+                        </Header>
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path={PATHS.EDIT_PROMO_DRAW}
+                element={
+                    <ProtectedRoute>
+                        <Header title="Edit Promotional Draw" backIcon={true}>
+                            <CreatePromoDraw />
+                        </Header>
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path={PATHS.PROMO_DRAW_SIGNUP}
+                element={
+                    <Header title="Join Promotional Draw" fullHeight={false}>
+                        <PromoDrawSignup />
+                    </Header>
                 }
             />
             <Route

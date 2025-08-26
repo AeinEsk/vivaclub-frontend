@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DrawList, DrawListFilter } from '../../@types/darw';
 import { getDrawsList } from '../../api/draws';
-import DrawTable from '../../components/drawTable/DrawTable';
-import { useNavigate } from 'react-router-dom';
-import Pagination from '../../components/filters/Pagination';
 import { PATHS } from '../../routes/routes';
+import DrawTable from '../../components/drawTable/DrawTable';
+import Pagination from '../../components/filters/Pagination';
 import DrawFilterModal from '../../components/filters/DrawFilterModal';
 import { FaFilter } from 'react-icons/fa6';
 
-const DrawsList = () => {
+const PromoDrawsList = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [drawData, setDrawData] = useState<DrawList[]>([]);
     const [currentPage, setCurrentPage] = useState<number>(1);
-    const [totalPages, setTotlaPages] = useState<number>(1);
+    const [totalPages, setTotalPages] = useState<number>(1);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCompact, setIsCompact] = useState<boolean>(window.innerWidth < 768); // Default based on initial screen size
 
@@ -60,12 +60,21 @@ const DrawsList = () => {
         (async () => {
             try {
                 setLoading(true);
-                const { data } = await getDrawsList(filters);
+                // Get all promotional draws by requesting a large page size
+                const { data } = await getDrawsList({ ...filters, pageSize: 1000 });
                 const allDraws = data?.draws || [];
-                // Filter out promotional draws (entryCost = 0) from regular draws
-                const regularDraws = allDraws.filter((d: any) => Number(d.entryCost) > 0);
-                setDrawData(regularDraws);
-                setTotlaPages(data?.totalPages);
+                // Filter promotional draws (entryCost = 0) for promo draws list
+                const promoDraws = allDraws.filter((d: any) => Number(d.entryCost) === 0);
+                
+                // Calculate pagination for promo draws only
+                const pageSize = filters.pageSize || 10;
+                const startIndex = ((filters.page || 1) - 1) * pageSize;
+                const endIndex = startIndex + pageSize;
+                const paginatedPromoDraws = promoDraws.slice(startIndex, endIndex);
+                const calculatedTotalPages = Math.ceil(promoDraws.length / pageSize);
+                
+                setDrawData(paginatedPromoDraws);
+                setTotalPages(calculatedTotalPages);
                 setLoading(false);
             } catch (error: any) {
                 console.error(error.response);
@@ -87,11 +96,12 @@ const DrawsList = () => {
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
                     onApply={handleApplyFilters}
+                    isPromoDraws={true}
                 />
             </div>
             {drawData.length !== 0 ? (
                 <div>
-                    <DrawTable drawData={drawData} from={0} to={100} loading={loading} compact={isCompact} />
+                    <DrawTable drawData={drawData} from={0} to={100} loading={loading} compact={isCompact} isPromoList={true} />
                     <div className="flex justify-center mt-8">
                         <Pagination
                             totalPage={totalPages}
@@ -105,16 +115,18 @@ const DrawsList = () => {
                     <span className="loading loading-dots items-center justify-center"></span>
                 </div>
             ) : (
-                <p className="text-center text-base my-4">No Draws Available yet</p>
+                <p className="text-center text-base my-4">No Promotional Draws Available yet</p>
             )}
 
             <button
                 className=" btn btn-primary w-full rounded-btn font-normal mt-7 text-white"
-                onClick={() => navigate(PATHS.CREATE_DRAW)}>
-                Create a New Regular Draw
+                onClick={() => navigate(PATHS.CREATE_PROMO_DRAW)}>
+                Create a New Promotional Draw
             </button>
         </div>
     );
 };
 
-export default DrawsList;
+export default PromoDrawsList;
+
+

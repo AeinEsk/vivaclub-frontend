@@ -12,9 +12,10 @@ interface Draw {
     to: number;
     loading: boolean;
     compact?: boolean | false;
+    isPromoList?: boolean | false;
 }
 
-const DrawTable: React.FC<Draw> = ({ drawData, from, to, loading, compact }) => {
+const DrawTable: React.FC<Draw> = ({ drawData, from, to, loading, compact, isPromoList = false }) => {
     const today = new Date();
     const formattedDate = today.toISOString();
     console.log(from, to);
@@ -128,7 +129,7 @@ const DrawTable: React.FC<Draw> = ({ drawData, from, to, loading, compact }) => 
                                             {draw.prize}
                                         </td>
                                     )}
-                                    <MenuCol drawId={draw.id} />
+                                    <MenuCol drawId={draw.id} isPromo={isPromoList} />
                                 </tr>
                             );
                         })}

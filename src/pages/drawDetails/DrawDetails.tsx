@@ -195,6 +195,8 @@ const DrawDetails = () => {
                                             </p>
                                         </div>
 
+
+
                                         <div className="bg-gray-50 p-3 rounded-xl">
                                             <div className="flex gap-1 items-center text-xs text-primary">
                                                 <FaRegCalendar /> <span>Draw Date</span>

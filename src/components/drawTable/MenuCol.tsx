@@ -3,13 +3,15 @@ import { PATHS } from '../../routes/routes';
 import { handleCopyLink } from '../functions/HandleCopyLink';
 import { handleShareLink } from '../functions/HandleShareLink';
 import { useNavigate } from 'react-router-dom';
+import { HOST_API } from '../../api/config';
 import { FaEllipsisVertical } from 'react-icons/fa6';
 
 type MenuCol = {
     drawId: string;
+    isPromo?: boolean;
 };
 
-const MenuCol = ({ drawId }: MenuCol) => {
+const MenuCol = ({ drawId, isPromo = false }: MenuCol) => {
     const navigate = useNavigate();
     const [isCopied, setIsCopied] = useState(false);
 
@@ -40,7 +42,9 @@ const MenuCol = ({ drawId }: MenuCol) => {
                             className="text-sm"
                             onClick={() => {
                                 handleCopyLink(
-                                    PATHS.DRAW_INFO.replace(':drawId', drawId),
+                                    isPromo
+                                        ? PATHS.PROMO_DRAW_SIGNUP.replace(':drawId', drawId)
+                                        : PATHS.DRAW_INFO.replace(':drawId', drawId),
                                     setIsCopied
                                 );
                             }}>
@@ -53,6 +57,16 @@ const MenuCol = ({ drawId }: MenuCol) => {
                             )}
                         </a>
                     </li>
+                    {isPromo && (
+                        <li>
+                            <a
+                                className="text-sm"
+                                onClick={() => window.open(`${HOST_API}/public/qr/draw/${drawId}`, '_blank')}
+                            >
+                                QR Code
+                            </a>
+                        </li>
+                    )}
                     <li>
                         <a
                             className="text-sm"
@@ -60,6 +74,7 @@ const MenuCol = ({ drawId }: MenuCol) => {
                             Draw Details
                         </a>
                     </li>
+
                     <li>
                         <a
                             className="text-sm"
@@ -70,7 +85,11 @@ const MenuCol = ({ drawId }: MenuCol) => {
                     <li>
                         <a
                             className="text-sm"
-                            onClick={() => navigate(PATHS.EDIT_DRAW.replace(':drawId', drawId))}>
+                            onClick={() => navigate(
+                                isPromo 
+                                    ? PATHS.EDIT_PROMO_DRAW.replace(':drawId', drawId)
+                                    : PATHS.EDIT_DRAW.replace(':drawId', drawId)
+                            )}>
                             Edit Draw
                         </a>
                     </li>

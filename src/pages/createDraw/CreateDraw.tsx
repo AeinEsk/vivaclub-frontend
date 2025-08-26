@@ -12,7 +12,8 @@ import Alert from '../../components/alert/Alert';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { fetchTerms } from '../../api/terms';
-import { FaPen, FaRegFileLines, FaTriangleExclamation } from 'react-icons/fa6';
+import { FaPen, FaRegFileLines, FaTriangleExclamation, FaTrash } from 'react-icons/fa6';
+import { HOST_API } from '../../api/config';
 
 const calculateEarnings = (entryCost: number) => {
     const participants = 10000;
@@ -97,6 +98,7 @@ const CreateDraw = () => {
     const [termsContent, setTermsContent] = useState<string>('');
     const [termsLoading, setTermsLoading] = useState<boolean>(false);
     const [termsEdited, setTermsEdited] = useState<boolean>(false);
+    const [currentImageUrl, setCurrentImageUrl] = useState<string>('');
 
     const openTermsModal = async () => {
         try {
@@ -137,6 +139,10 @@ const CreateDraw = () => {
                 const response = await uploadImage(formData);
                 const imageId = response?.data?.id;
                 setValue('imageId', imageId, { shouldValidate: true });
+                // Update current image URL
+                if (imageId) {
+                    setCurrentImageUrl(`${HOST_API}/public/download/${imageId}`);
+                }
                 setImgLoading(false);
             } catch (error) {
                 setValue('imageId', '', { shouldValidate: true });
@@ -144,6 +150,16 @@ const CreateDraw = () => {
                 setError(`Error uploading file: ${error}`);
                 setImgLoading(false);
             }
+        }
+    };
+
+    const handleRemoveImage = () => {
+        setValue('imageId', undefined, { shouldValidate: true });
+        setCurrentImageUrl('');
+        // Clear the file input
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        if (fileInput) {
+            fileInput.value = '';
         }
     };
 
@@ -204,6 +220,10 @@ const CreateDraw = () => {
                     setTermsContent(d.termsHtml);
                     setTermsEdited(true);
                 }
+                // Set current image URL if exists
+                if (d.imageId) {
+                    setCurrentImageUrl(`${HOST_API}/public/download/${d.imageId}`);
+                }
             } catch (e) {
                 setError('Failed to load draw');
             } finally {
@@ -223,9 +243,15 @@ const CreateDraw = () => {
                 discounts: discountItems,
                 termsHtml: termsEdited ? termsContent : undefined
             };
-            // Avoid clearing image unless a new one is uploaded
-            if (drawId && !data.imageId) {
-                delete formDataWithDiscounts.imageId;
+            // Handle image removal: send null to remove image, or keep current value
+            if (drawId) {
+                if (data.imageId === undefined) {
+                    // User removed the image, send null to delete it
+                    formDataWithDiscounts.imageId = null;
+                } else if (!data.imageId) {
+                    // No new image uploaded, don't send imageId field to keep existing
+                    delete formDataWithDiscounts.imageId;
+                }
             }
 
             const response = drawId
@@ -233,7 +259,7 @@ const CreateDraw = () => {
                 : await createDraw(formDataWithDiscounts);
 
             if (response && response.data) {
-                navigate(drawId ? PATHS.DRAW_LIST : PATHS.WELCOME);
+                navigate(PATHS.WELCOME);
             } else {
                 setError(drawId ? 'Failed to update draw. Please try again.' : 'Failed to create draw. Please try again.');
                 setLoading(false);
@@ -406,7 +432,7 @@ const CreateDraw = () => {
                                     className="input input-bordered w-full"
                                     disabled={loading || isLocked}
                                     {...register('entryCost', { valueAsNumber: true })}
-                                    min={0}
+                                    min={1}
                                 />
                                 <label className="label">
                                     {errors.entryCost && (
@@ -486,6 +512,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                                 </span>
                             )}
                         </label>
+
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
@@ -604,7 +631,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                     <div>
                         <label className="label">
                             <span className="label-text text-sm">
-                                Promotional Image{' '}
+                                Draw Image{' '}
                                 <Tooltip
                                     text="Upload an eye-catching image that represents your draw. High-quality visuals can increase participation rates."
                                     direction="tooltip-left"
@@ -618,6 +645,30 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                             onChange={handleFileChange}
                             disabled={loading || isLocked}
                         />
+                        
+                        {/* Current Image Display */}
+                        {currentImageUrl && (
+                            <div className="mt-4">
+                                <div className="relative inline-block">
+                                    <img
+                                        src={currentImageUrl}
+                                        alt="Current draw image"
+                                        className="w-full max-w-xs h-32 object-cover rounded-lg border border-gray-200"
+                                    />
+                                    {!isLocked && (
+                                        <button
+                                            type="button"
+                                            onClick={handleRemoveImage}
+                                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full shadow-lg"
+                                            title="Remove image"
+                                        >
+                                            <FaTrash className="text-xs" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        
                         <div className="label">
                             {!error ? (
                                 <span className="label-text-alt">

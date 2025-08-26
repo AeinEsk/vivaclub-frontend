@@ -9,6 +9,7 @@ const UPLOAD_IMAGE = '/api/upload/';
 const DRAW_MEMBERSHIPS = '/api/club-owner/draw/membership/';
 const DELETE_DRAW = '/api/club-owner/draw/';
 const UPDATE_DRAW = '/api/club-owner/draw/';
+const CREATE_PROMO_DRAW = '/api/club-owner/promo-draw';
 
 const buildQueryString = (filters: Record<string, any>) => {
     return Object.entries(filters)
@@ -69,3 +70,9 @@ export const cancelDraw = (drawId: string) => {
 export const updateDraw = (drawId: string, payload: Partial<DrawFormData>) => {
     return axiosInstance.put(`${UPDATE_DRAW}${drawId}`, payload);
 };
+
+// Create promotional draw helper
+export const createPromotionalDraw = (payload: any) => axiosInstance.post(CREATE_PROMO_DRAW, payload);
+
+// Sign up for promotional draw (public route, no auth required)
+export const signupPromotionalDraw = (payload: any) => axiosInstance.post('/public/club-owner/promo-draw-signup', payload);

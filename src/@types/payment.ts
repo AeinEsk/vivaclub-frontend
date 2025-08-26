@@ -3,6 +3,7 @@ export type DrawPayment = {
     drawId: string;
     email: string;
     paymentMethod: string;
+    phone?: string;
 };
 
 export type PackagePayment = {

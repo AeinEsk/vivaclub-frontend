@@ -41,8 +41,6 @@ export type DrawListFilter = {
     drawName: string;
     entryCostMin?: number;
     entryCostMax?: number;
-    minimumPrize?: number;
-    maximumPrize?: number;
 };
 
 export type DrawMembersFilter = {

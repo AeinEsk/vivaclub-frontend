@@ -13,9 +13,10 @@ type componentProp = {
     title: string;
     backIcon?: boolean;
     menuIcon?: boolean;
+    fullHeight?: boolean;
 };
 
-const Header: React.FC<componentProp> = ({ children, title, backIcon, menuIcon }) => {
+const Header: React.FC<componentProp> = ({ children, title, backIcon, menuIcon, fullHeight = true }) => {
     const { currentUser, handleLogout } = useAuth();
     const navigate = useNavigate();
     const [imgLoading, setImgLoading] = useState(currentUser?.imageUrl ? true : false);
@@ -45,7 +46,17 @@ const Header: React.FC<componentProp> = ({ children, title, backIcon, menuIcon }
                             )}
                             {backIcon && (
                                 <div className="flex items-center gap-6">
-                                    <div className="nav-button" onClick={() => navigate(-1)}>
+                                    <div
+                                        className="nav-button"
+                                        onClick={() => {
+                                            // If there is history, go back; otherwise, fallback to welcome
+                                            if (window.history.state && window.history.state.idx > 0) {
+                                                navigate(-1);
+                                            } else {
+                                                navigate(PATHS.WELCOME);
+                                            }
+                                        }}
+                                    >
                                         <FaArrowLeftLong className="text-[18px]" />
                                     </div>
                                     <h1 className="text-xl text-left font-semibold bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
@@ -96,7 +107,7 @@ const Header: React.FC<componentProp> = ({ children, title, backIcon, menuIcon }
                         )}
                     </header>
 
-                    <div className="main min-h-screen bg-page-body">{children}</div>
+                    <div className={`main ${fullHeight ? 'min-h-screen' : ''} bg-page-body`}>{children}</div>
                 </>
             )}
         </div>
