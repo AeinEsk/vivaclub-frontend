@@ -3,7 +3,7 @@ import InfoBtn from '../../components/infoButton/InfoBtn';
 import { useEffect, useState } from 'react';
 import Loading from '../../components/loading/Loading';
 import { PATHS } from '../../routes/routes';
-import { getDrawInfoById, getDrawStats } from '../../api/draws';
+import { getDrawInfoById } from '../../api/draws';
 import { HOST_API } from '../../api/config';
 import { dateConverter } from '../../components/dateConverter/DateConverter';
 import {

@@ -2,7 +2,7 @@
 
 # Exit on any error
 set -e
-
+yarn install
 echo "🏗️ Building React application..."
 npm run build
 

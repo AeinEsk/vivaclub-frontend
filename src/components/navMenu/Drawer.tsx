@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { FaPlus } from 'react-icons/fa6';
 import { FaRegFileLines } from 'react-icons/fa6';
 import { FaRegFileImage } from 'react-icons/fa6';
-import { FaUserShield, FaFileSignature } from 'react-icons/fa6';
+import {  FaFileSignature } from 'react-icons/fa6';
 import { PATHS } from '../../routes/routes';
 import { FaQuestion } from 'react-icons/fa6';
 
