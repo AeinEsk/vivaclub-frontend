@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -82,7 +82,7 @@ const PromoDrawSignup = () => {
                     <h2 className="text-2xl font-bold text-gray-800">Join the Promotional Draw</h2>
                     <p className="text-gray-600 mt-2">Enter your details to participate</p>
                 </div>
-                
+
                 {/* Draw Image - under title */}
                 {drawInfo?.imageId && (
                     <div className="mb-6 text-center">
@@ -257,7 +257,7 @@ const PromoDrawSignup = () => {
                         </button>
                     </div>
                 </form>
-                
+
                 <div className="text-center mt-6">
                     <span className="text-xs text-gray-400">
                         Powered by{' '}
