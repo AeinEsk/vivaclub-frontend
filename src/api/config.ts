@@ -1,5 +1,5 @@
 // Dynamic API configuration based on environment
-export const HOST_API = import.meta.env.VITE_API_URL || 'https://vivaclub-backend.onrender.com';
+export const HOST_API = import.meta.env.VITE_API_URL || 'https://api.vivaclub.io';
 export const HOST_APP = import.meta.env.VITE_APP_URL || 'https://app.vivaclub.io';
 
 // export const HOST_API = 'https://api.vivaclub.io';
