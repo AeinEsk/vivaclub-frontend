@@ -13,7 +13,6 @@ const PromoDrawSignup = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const navigate = useNavigate();
     const { drawId } = useParams<{ drawId: string }>();
 
     const [socials, setSocials] = useState<{ instagram?: string; facebook?: string; tiktok?: string; googleReview?: string; x?: string; youtube?: string; website?: string } | null>(null);

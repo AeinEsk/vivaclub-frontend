@@ -87,8 +87,8 @@
       { "selector": "property", "format": null }
     ],
     "@typescript-eslint/no-unused-vars": [
-      "off",
-      { "varsIgnorePattern": "^_", "argsIgnorePattern": "^_" }
+      "error",
+      { "varsIgnorePattern": "^_", "argsIgnorePattern": "^_", "ignoreRestSiblings": true }
     ],
     "@typescript-eslint/consistent-type-definitions": ["error", "interface"],
     "no-duplicate-imports": "off",
