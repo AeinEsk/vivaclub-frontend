@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PackageFormData } from '../../@types/packageForm';
-import { useNavigate } from 'react-router-dom';
-import { createMembership } from '../../api/packages';
+import { useNavigate, useParams } from 'react-router-dom';
+import { createMembership, getMembershipDetailsById, updateMembership } from '../../api/packages';
 import Alert from '../../components/alert/Alert';
 import AccordionPackage from '../../components/accordionCard/AccordionPackage';
 import { PATHS } from '../../routes/routes';
@@ -10,9 +10,14 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Popup from '../../components/alert/Popup';
 import Tooltip from '../../components/tooltip/Tooltip';
-import {  timeZone, discountTypes } from '../../@types/darw';
-import { FaPlus } from 'react-icons/fa6';
+import { timeZone, discountTypes } from '../../@types/darw';
+import { FaPlus, FaXmark } from 'react-icons/fa6';
+import { FaRegFileLines, FaPen, FaTriangleExclamation } from 'react-icons/fa6';
 import { currency as currencyOptions } from '../../@types/darw';
+import { validatePromoPeriods, getNowInTimezone } from '../../utils/validation';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { fetchTerms } from '../../api/terms';
 
 const validateNumber = (minValue: number, errorMessage: string) =>
     z
@@ -28,7 +33,7 @@ const validateNumber = (minValue: number, errorMessage: string) =>
 const tierSchema = z.object({
     name: z.string().nonempty('Tier Name is required'),
     price: validateNumber(1, 'Price must be at least 1'),
-    chanceOfWin: validateNumber(1, 'Chance of Win must be at least 1'),
+    numberOfTicket: validateNumber(1, 'Number of Ticket must be at least 1'),
     highlight: z.string().optional(),
     recurringEntry: validateNumber(0, 'Recurring Entry must be at least 0'),
     currency: z.string().nonempty('Currency is required').default('AUD')
@@ -48,7 +53,7 @@ const calculateEarnings = (price: number) => {
     const grossRevenue = Math.round(price * participants);
     const platformFee = Math.round(grossRevenue * 0.15);
     const netEarnings = grossRevenue - platformFee;
-    
+
     return {
         participants,
         grossRevenue: grossRevenue.toLocaleString(),
@@ -65,17 +70,34 @@ const CreatePackage = () => {
     });
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
-    const [packageData, setPackageData] = useState<PackageFormData>({
+    // const [initialLoading, setInitialLoading] = useState(false);
+    const [isLocked, setIsLocked] = useState(false);
+    const [isInactive, setIsInactive] = useState(false);
+    const { packageId } = useParams<{ packageId: string }>();
+    const [packageData, setPackageData] = useState<PackageFormData & { termsHtml?: string }>({
         name: '',
         frequency: 'Weekly',
         drawDate: '',
         currency: 'AUD',
         timezone: 'Australia/Sydney',
         tiers: [],
-        discounts: []
+        discounts: [],
+        termsHtml: '',
+        emailWinner: true
     });
     const membershipFrequency = ['Weekly', 'Fortnightly', 'Monthly', 'Yearly'];
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
+    const [promoPeriods, setPromoPeriods] = useState<Array<{ start: string; end: string; multiplier: number }>>([]);
+    const [promoPeriodsError, setPromoPeriodsError] = useState<string>('');
+    const promoPeriodsRef = useRef<HTMLDivElement>(null);
+    const initialDrawDateRef = useRef<string>('');
+    // const [showTermsEditor, setShowTermsEditor] = useState<boolean>(false);
+    // const [loadingTerms, setLoadingTerms] = useState<boolean>(false);
+    // Terms modal state (like CreateDraw)
+    const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
+    const [termsModalLoading, setTermsModalLoading] = useState<boolean>(false);
+    const [termsContent, setTermsContent] = useState<string>('');
+    const [termsEdited, setTermsEdited] = useState<boolean>(false);
     const inputRefs: any = {
         name: useRef<HTMLInputElement>(null),
         frequency: useRef<HTMLInputElement>(null),
@@ -113,18 +135,66 @@ const CreatePackage = () => {
         defaultValues: {
             name: '',
             price: undefined,
-            chanceOfWin: undefined,
+            numberOfTicket: undefined,
             recurringEntry: undefined,
             highlight: '',
             discounts: [],
         }
     });
 
+    // Terms modal handlers
+    const openTermsModal = async () => {
+        try {
+            setShowTermsModal(true);
+            setTermsModalLoading(true);
+            const draftKey = 'terms:membership:draft';
+            const draftEditedKey = `${draftKey}Edited`;
+            const draft = localStorage.getItem(draftKey) || '';
+            const draftEdited = localStorage.getItem(draftEditedKey) === '1';
+
+            if (draftEdited && draft) {
+                setTermsContent(draft);
+                setTermsEdited(true);
+                return;
+            }
+
+            // Otherwise load from API: membership-specific if editing, otherwise global
+            const { data } = await fetchTerms(undefined, packageId || undefined);
+            setTermsContent(data?.html || '');
+            setTermsEdited(!!data?.html);
+        } catch (e) {
+            setTermsContent('');
+            setTermsEdited(false);
+        } finally {
+            setTermsModalLoading(false);
+        }
+    };
+
+    const closeTermsModal = () => {
+        setShowTermsModal(false);
+    };
+
+    const saveTermsModal = () => {
+        const draftKey = 'terms:membership:draft';
+        const draftEditedKey = `${draftKey}Edited`;
+        try {
+            localStorage.setItem(draftKey, termsContent || '');
+            localStorage.setItem(draftEditedKey, '1');
+            setTermsEdited(true);
+            // Reflect into current form state so previews or validations can use it
+            setPackageData((prev) => ({ ...prev, termsHtml: termsContent || '' }));
+            setShowTermsModal(false);
+        } catch (e) {
+            // ignore storage failures
+            setShowTermsModal(false);
+        }
+    };
+
     const addNewTier = (data: TierFormData) => {
         const tierData = {
             name: data.name,
             price: data.price,
-            chanceOfWin: data.chanceOfWin,
+            numberOfTicket: data.numberOfTicket,
             recurringEntry: data.recurringEntry,
             highlight: data.highlight || '',
             currency: data.currency
@@ -151,7 +221,7 @@ const CreatePackage = () => {
         reset({
             name: '',
             price: undefined,
-            chanceOfWin: 0,
+            numberOfTicket: 0,
             recurringEntry: undefined,
             highlight: '',
             discounts: currentDiscounts,
@@ -193,10 +263,33 @@ const CreatePackage = () => {
         }));
     };
 
+    const validatePromoPeriodsLocal = () => {
+        const isUpdateMode = !!packageId;
+        const validation = validatePromoPeriods(promoPeriods, { 
+            drawDate: packageData.drawDate,
+            timezone: packageData.timezone,
+            // On create, enforce future dates; on edit, allow past periods to remain
+            validateNotInPast: !isUpdateMode,
+            isUpdateMode
+        });
+        
+        if (!validation.isValid && validation.errorMessage) {
+            setPromoPeriodsError(validation.errorMessage);
+            // Scroll to promotional periods section
+            promoPeriodsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+        
+        setPromoPeriodsError('');
+        return true;
+    };
+
     const publishData = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         if (!validateFields()) return;
+        
+        if (!validatePromoPeriodsLocal()) return;
 
         if (packageData.tiers.length === 0) {
             setShowPopup({
@@ -209,14 +302,57 @@ const CreatePackage = () => {
         handleCreatePackage(packageData);
     };
 
-    const handleCreatePackage = async (packageVal: PackageFormData) => {
+    const handleCreatePackage = async (packageVal: PackageFormData & { termsHtml?: string }) => {
         try {
             setLoading(true);
-            await createMembership(packageVal);
-            navigate(PATHS.WELCOME);
+
+            // attach promo periods with ISO strings
+            // attach terms draft if exists for membership context
+            const draftKey = 'terms:membership:draft';
+            const draftEditedKey = `${draftKey}Edited`;
+            const draft = localStorage.getItem(draftKey);
+            const draftEdited = localStorage.getItem(draftEditedKey) === '1';
+
+            const packageWithPromoPeriods: any = {
+                ...packageVal,
+                termsHtml: draftEdited ? (draft || '') : (packageVal.termsHtml || ''),
+                promoPeriods: (promoPeriods || [])
+                    .filter(p => p.start && p.end && Number(p.multiplier) >= 1)
+                    .map(p => ({ start: p.start, end: p.end, multiplier: Math.max(1, Math.floor(Number(p.multiplier))) }))
+            };
+            // If editing and drawDate has not changed from initial, omit it
+            if (packageId && packageData.drawDate === initialDrawDateRef.current) {
+                delete packageWithPromoPeriods.drawDate;
+            }
+
+            if (packageId) {
+                let payload: any;
+                if (isLocked) {
+                    payload = { promoPeriods: packageWithPromoPeriods.promoPeriods };
+                } else {
+                    payload = packageWithPromoPeriods;
+                }
+                const res = await updateMembership(packageId, payload);
+                if (res && res.data) {
+                    // clear draft after successful save
+                    localStorage.removeItem(draftKey);
+                    localStorage.removeItem(draftEditedKey);
+                    navigate(PATHS.WELCOME);
+                } else {
+                    setShowPopup({ state: true, text: 'Failed to update membership' });
+                }
+            } else {
+                await createMembership(packageWithPromoPeriods as any);
+                // clear draft after successful create
+                localStorage.removeItem(draftKey);
+                localStorage.removeItem(draftEditedKey);
+                navigate(PATHS.WELCOME);
+            }
         } catch (error: any) {
             setLoading(false);
-            console.error(error.response);
+            const apiMessage = error?.response?.data?.error || 'Failed to create membership';
+            console.error('Create membership failed:', error?.response || error);
+            setShowPopup({ state: true, text: apiMessage });
         }
     };
 
@@ -227,6 +363,63 @@ const CreatePackage = () => {
     const price = watch('price');
     const currency = watch('currency');
 
+    // Load package for editing; set lock states and termsHtml
+    useEffect(() => {
+        const load = async () => {
+            console.log('CreatePackage useEffect triggered, packageId:', packageId);
+            if (!packageId) {
+                console.log('No packageId, loading default/global terms to prefill');
+                try {
+                    setLoadingTerms(true);
+                    const { data } = await fetchTerms();
+                    setPackageData((prev) => ({ ...prev, termsHtml: data?.html || '' }));
+                } catch (e) {
+                    // ignore
+                } finally {
+                    setLoadingTerms(false);
+                }
+                return;
+            }
+            try {
+                console.log('Loading membership details for packageId:', packageId);
+                const { data } = await getMembershipDetailsById(packageId);
+                console.log('Loaded membership data:', data);
+                setPackageData({
+                    name: data.name || '',
+                    frequency: data.frequency || 'Weekly',
+                    drawDate: data.drawDate ? new Date(data.drawDate).toISOString().slice(0, 16) : '',
+                    currency: data.currency || 'AUD',
+                    timezone: data.timezone || 'Australia/Sydney',
+                    tiers: Array.isArray(data.tiers) ? data.tiers : [],
+                    discounts: Array.isArray(data.discounts) ? data.discounts : [],
+                    termsHtml: data.termsHtml || '',
+                    emailWinner: data.emailWinner !== false
+                });
+                initialDrawDateRef.current = data.drawDate ? new Date(data.drawDate).toISOString().slice(0, 16) : '';
+                if (Array.isArray(data.promoPeriods)) {
+                    setPromoPeriods(
+                        data.promoPeriods.map((p: any) => ({
+                            start: p.start ? p.start.slice(0, 16) : '',
+                            end: p.end ? p.end.slice(0, 16) : '',
+                            multiplier: Number(p.multiplier) || 1
+                        }))
+                    );
+                }
+                const membersCount = Number(data.membersCount || 0);
+                setIsLocked(membersCount > 0);
+                const nowIso = new Date().toISOString();
+                const expired = !!data.drawDate && new Date(data.drawDate).toISOString() <= nowIso;
+                setIsInactive(!!data.deactivatedAt || expired);
+                console.log('Set lock states - isLocked:', membersCount > 0, 'isInactive:', !!data.deactivatedAt || expired);
+            } catch (e) {
+                console.error('Error loading membership details:', e);
+            }
+        };
+        load();
+    }, [packageId]);
+
+    console.log('CreatePackage render - packageId:', packageId, 'packageData:', packageData, 'isLocked:', isLocked, 'isInactive:', isInactive);
+    
     return (
         <>
             <div className="flex items-center justify-center">
@@ -245,13 +438,13 @@ const CreatePackage = () => {
                             <input
                                 type="text"
                                 placeholder="Enter Package name"
-                                className="input input-bordered border-gray-400 w-full"
+                                className="input input-bordered w-full"
                                 value={packageData.name}
                                 ref={inputRefs.name}
                                 onChange={(e) =>
                                     setPackageData({ ...packageData, name: e.target.value })
                                 }
-                                disabled={loading}
+                                disabled={loading || isLocked || isInactive}
                             />
                             {fieldErrors.name && packageData.name === '' && (
                                 <label className="label">
@@ -270,7 +463,7 @@ const CreatePackage = () => {
                                     </span>
                                 </label>
                                 <select
-                                    className="select select-bordered border-gray-400 w-full"
+                                    className="select select-bordered w-full"
                                     value={packageData.frequency}
                                     ref={inputRefs.frequency}
                                     onChange={(e) =>
@@ -279,7 +472,7 @@ const CreatePackage = () => {
                                             frequency: e.target.value
                                         })
                                     }
-                                    disabled={loading}>
+                                    disabled={loading || isLocked || isInactive}>
                                     <option value="" disabled>
                                         Choose membership frequency
                                     </option>
@@ -305,9 +498,14 @@ const CreatePackage = () => {
                                 </label>
                                 <select
                                     className="select select-bordered w-full"
-                                    disabled={loading}
-                                    defaultValue="AUD"
-                                    {...register('currency')}>
+                                    disabled={loading || isLocked || isInactive}
+                                    value={packageData.currency}
+                                    onChange={(e) =>
+                                        setPackageData({
+                                            ...packageData,
+                                            currency: e.target.value
+                                        })
+                                    }>
                                     <option value="" disabled>Choose currency</option>
                                     {currencyOptions.map((option: string, index: number) => (
                                         <option key={index} value={option}>
@@ -331,8 +529,8 @@ const CreatePackage = () => {
                                     </span>
                                 </label>
                                 <select
-                                    className="select select-bordered border-gray-400 w-full"
-                                    defaultValue="Australia/Sydney"
+                                    className="select select-bordered w-full"
+                                    value={packageData.timezone}
                                     ref={inputRefs.timezone}
                                     onChange={(e) =>
                                         setPackageData({
@@ -340,7 +538,7 @@ const CreatePackage = () => {
                                             timezone: e.target.value
                                         })
                                     }
-                                    disabled={loading}>
+                                    disabled={loading || isLocked || isInactive}>
                                     <option value="" disabled>
                                         Choose Timezone
                                     </option>
@@ -358,6 +556,8 @@ const CreatePackage = () => {
                                         </span>
                                     </label>
                                 )}
+
+
                             </div>
                         </div>
 
@@ -373,12 +573,10 @@ const CreatePackage = () => {
                             </label>
                             <input
                                 type="datetime-local"
-                                className="input input-bordered border-gray-400 w-full"
+                                className="input input-bordered w-full"
                                 value={packageData.drawDate}
-                                onChange={(e) =>
-                                    setPackageData({ ...packageData, drawDate: e.target.value })
-                                }
-                                disabled={loading}
+                                onChange={(e) => setPackageData({ ...packageData, drawDate: e.target.value })}
+                                disabled={loading || isLocked || isInactive}
                                 min={today}
                                 ref={inputRefs.drawDate}
                             />
@@ -389,7 +587,173 @@ const CreatePackage = () => {
                                     </span>
                                 </label>
                             )}
+
+                            {/* Promotional periods */}
+                            <div className="mt-4 mb-4" ref={promoPeriodsRef}>
+                                <div className="flex items-center justify-between">
+                                    <label className="label">
+                                        <span className="label-text">Promotional periods{' '}
+                                            <Tooltip
+                                                text="Boost entries for a set period. e.g. ‘Every ticket = 2 entries’ or ‘Every $1 = 2 entries."
+                                                direction="tooltip-left"
+                                            />
+                                        </span>
+                                    </label>
+                                    <button
+                                        type="button"
+                                        className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                                        disabled={loading || isInactive}
+                                        onClick={() => {
+                                            const drawDateVal = packageData.drawDate;
+                                            const timezone = packageData.timezone;
+                                            const nowIso = getNowInTimezone(timezone);
+                                            // Default start 15 minutes from now
+                                            const nowPlus15 = (() => {
+                                                const d = new Date();
+                                                d.setMinutes(d.getMinutes() + 15);
+                                                return new Intl.DateTimeFormat('sv-SE', {
+                                                    timeZone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                                    year: 'numeric',
+                                                    month: '2-digit',
+                                                    day: '2-digit',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                }).format(d).replace(' ', 'T');
+                                            })();
+                                            const existing = (promoPeriods || []).filter(p => p.start && p.end);
+                                            const lastEnd = existing.length
+                                                ? existing
+                                                    .slice()
+                                                    .sort((a, b) => (a.start || '').localeCompare(b.start || ''))
+                                                    .at(-1)!.end
+                                                : '';
+                                            const start = lastEnd && lastEnd > nowPlus15 ? lastEnd : nowPlus15;
+                                            const end = drawDateVal && drawDateVal > start ? drawDateVal : start;
+                                            const newPeriod = { start, end, multiplier: 1 };
+                                            setPromoPeriods([...(promoPeriods || []), newPeriod]);
+                                        }}
+                                    >
+                                        <FaPlus className="w-4 h-4 mr-1" />
+                                        Add period
+                                    </button>
+                                </div>
+                                {(promoPeriods || []).map((p, idx) => {
+                                    const drawDateVal = packageData.drawDate;
+                                    const timezone = packageData.timezone;
+                                    const nowIso = getNowInTimezone(timezone);
+                                    const startInvalid = !!p.start && !!p.end && p.start >= p.end;
+                                    const afterDraw = !!drawDateVal && (!!p.end && p.end > drawDateVal);
+
+                                    // Live range disabling (like CreateDraw/CreatePromoDraw)
+                                    const sorted = (promoPeriods || [])
+                                        .map((pp, i) => ({ i, s: pp.start || '' }))
+                                        .sort((a, b) => a.s.localeCompare(b.s));
+                                    const pos = sorted.findIndex(x => x.i === idx);
+                                    const prevEnd = (promoPeriods[idx - 1]?.end) || '';
+                                    const nextStart = pos >= 0 && pos < sorted.length - 1 ? (promoPeriods[sorted[pos + 1].i]?.start || '') : '';
+                                    const startMinBase = prevEnd && prevEnd > nowIso ? prevEnd : nowIso;
+                                    const startMin = (() => {
+                                        try {
+                                            const d = new Date(startMinBase);
+                                            d.setMinutes(d.getMinutes() + 1);
+                                            return d.toISOString().slice(0, 16);
+                                        } catch {
+                                            return startMinBase;
+                                        }
+                                    })();
+                                    const startMax = nextStart || drawDateVal || undefined;
+                                    const endMin = p.start || startMin;
+                                    const endMax = nextStart || drawDateVal || undefined;
+
+                                    return (
+                                        <div key={idx} className="mt-2 p-3 border border-gray-200 rounded-lg">
+                                            <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+                                                <div className="md:col-span-4">
+                                                    <label className="label"><span className="label-text text-sm">Start</span></label>
+                                                    <input
+                                                        type="datetime-local"
+                                                        className="input input-bordered w-full"
+                                                        disabled={loading || isInactive}
+                                                        value={p.start}
+                                                        min={packageId ? undefined : startMin}
+                                                        max={startMax}
+                                                        onChange={(e) => {
+                                                            const v = e.target.value;
+                                                            const copy = [...promoPeriods];
+                                                            copy[idx] = { ...copy[idx], start: v };
+                                                            setPromoPeriods(copy);
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-4">
+                                                    <label className="label"><span className="label-text text-sm">End</span></label>
+                                                    <input
+                                                        type="datetime-local"
+                                                        className="input input-bordered w-full"
+                                                        disabled={loading || isInactive}
+                                                        value={p.end}
+                                                        min={endMin}
+                                                        max={endMax}
+                                                        onChange={(e) => {
+                                                            const v = e.target.value;
+                                                            const copy = [...promoPeriods];
+                                                            copy[idx] = { ...copy[idx], end: v };
+                                                            setPromoPeriods(copy);
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-2">
+                                                    <label className="label"><span className="label-text text-sm">Multiplier</span></label>
+                                                    <input
+                                                        type="number"
+                                                        className="input input-bordered w-full"
+                                                        min={1}
+                                                        disabled={loading || isInactive}
+                                                        value={p.multiplier}
+                                                        onChange={(e) => {
+                                                            const v = Math.max(1, Math.floor(Number(e.target.value || 1)));
+                                                            const copy = [...promoPeriods];
+                                                            copy[idx] = { ...copy[idx], multiplier: v };
+                                                            setPromoPeriods(copy);
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-2 flex items-end">
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-outline btn-error w-full"
+                                                        disabled={loading || isInactive}
+                                                        onClick={() => setPromoPeriods(promoPeriods.filter((_, i) => i !== idx))}
+                                                        aria-label={`Remove period ${idx + 1}`}
+                                                    >
+                                                        <span className="md:hidden">Remove</span>
+                                                        <span className="hidden md:flex items-center justify-center">
+                                                            <FaXmark className="w-4 h-4 lg:mr-2" />
+                                                            <span className="hidden lg:inline">Remove</span>
+                                                        </span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            {(startInvalid || afterDraw) && (
+                                                <div className="mt-2">
+                                                    <span className="text-xs text-red-600">
+                                                        {startInvalid ? 'Start must be before End.' : 'End must be before draw date.'}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {promoPeriodsError && (
+                                <label className="label">
+                                    <span className="label-text-alt text-red-600 font-semibold">
+                                        {promoPeriodsError}
+                                    </span>
+                                </label>
+                            )}
                         </div>
+
 
                         <div className="primary-divider"></div>
                         {/* Heading for discount section */}
@@ -411,7 +775,7 @@ const CreatePackage = () => {
                                 </label>
                                 <select
                                     className="select select-bordered w-full h-9 min-h-[36px] text-sm"
-                                    disabled={loading}
+                                    disabled={loading || isLocked || isInactive}
                                     {...register('discounts.0.type')}>
                                     <option value="">Select</option>
                                     {discountTypes.map((type, index) => (
@@ -438,8 +802,8 @@ const CreatePackage = () => {
                                         type="button"
                                         onClick={handleAddDiscount}
                                         className={`btn h-9 min-h-[36px] ${watch('discounts.0.type') && watch('discounts.0.code')
-                                                ? 'btn-primary'
-                                                : 'btn-disabled'
+                                            ? 'btn-primary'
+                                            : 'btn-disabled'
                                             }`}
                                         disabled={
                                             !watch('discounts.0.type') || !watch('discounts.0.code') || loading
@@ -509,9 +873,9 @@ Your potential earnings would be ${currency} ${calculateEarnings(price).netEarni
                                 </label>
                                 <input
                                     type="text"
-                                    className="input input-bordered border-gray-400 w-full"
+                                    className="input input-bordered w-full"
                                     placeholder="Enter tier name"
-                                    disabled={loading}
+                                    disabled={loading || isLocked || isInactive}
                                     {...register('name')}
                                 />
                                 <label className="label">
@@ -536,10 +900,10 @@ Your potential earnings would be ${currency} ${calculateEarnings(price).netEarni
                                 <input
                                     type="number"
                                     placeholder="Enter tier price"
-                                    className="input input-bordered border-gray-400 w-full"
+                                    className="input input-bordered w-full"
                                     step="any"
                                     min={0}
-                                    disabled={loading}
+                                    disabled={loading || isLocked || isInactive}
                                     {...register('price', { valueAsNumber: true })}
                                 />
                                 <label className="label">
@@ -565,15 +929,15 @@ Your potential earnings would be ${currency} ${calculateEarnings(price).netEarni
                                 <input
                                     type="number"
                                     placeholder="Number of Tickets"
-                                    className="input input-bordered border-gray-400 w-full"
+                                    className="input input-bordered w-full"
                                     min={0}
-                                    disabled={loading}
-                                    {...register('chanceOfWin', { valueAsNumber: true })}
+                                    disabled={loading || isLocked || isInactive}
+                                    {...register('numberOfTicket', { valueAsNumber: true })}
                                 />
                                 <label className="label">
-                                    {errors.chanceOfWin && (
+                                    {errors.numberOfTicket && (
                                         <span className="label-text-alt text-red-600 font-semibold">
-                                            {errors.chanceOfWin.message}
+                                            {errors.numberOfTicket.message}
                                         </span>
                                     )}
                                 </label>
@@ -594,7 +958,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(price).netEarni
                                     placeholder="Enter accumulate entries"
                                     className="input input-bordered border-gray-400 w-full"
                                     min={0}
-                                    disabled={loading}
+                                    disabled={loading || isLocked || isInactive}
                                     {...register('recurringEntry', { valueAsNumber: true })}
                                 />
                                 <label className="label">
@@ -617,9 +981,9 @@ Your potential earnings would be ${currency} ${calculateEarnings(price).netEarni
                                     </span>
                                 </label>
                                 <textarea
-                                    className="textarea input-bordered border-gray-400 w-full"
+                                    className="textarea input-bordered w-full"
                                     placeholder="Enter tier highlight.(Add hyphen - for every line)"
-                                    disabled={loading}
+                                    disabled={loading || isLocked || isInactive}
                                     {...register('highlight')}
                                 />
                                 <label className="label">
@@ -634,7 +998,8 @@ Your potential earnings would be ${currency} ${calculateEarnings(price).netEarni
                             <button
                                 type="button"
                                 className="col-span-2 btn bg-primary/10 text-primary w-full hover:bg-primary/20"
-                                onClick={handleSubmit(addNewTier)}>
+                                onClick={handleSubmit(addNewTier)}
+                                disabled={loading || isLocked || isInactive}>
                                 <FaPlus className="text-[18px]" />
                                 Add Tier
                             </button>
@@ -651,9 +1016,10 @@ Your potential earnings would be ${currency} ${calculateEarnings(price).netEarni
                                         <AccordionPackage
                                             name={tier.name}
                                             price={tier.price ?? 0}
-                                            chanceOfWin={tier.chanceOfWin ?? 0}
+                                            numberOfTicket={tier.numberOfTicket ?? 0}
                                             recurringEntry={tier.recurringEntry ?? 0}
                                             highlight={tier.highlight}
+                                            disabled={loading || isLocked || isInactive}
                                             onDelete={(e) => {
                                                 e?.preventDefault();
                                                 handleDeleteTier(index);
@@ -682,13 +1048,70 @@ Your potential earnings would be ${currency} ${calculateEarnings(price).netEarni
                                 </div>
                             </div>
 
+                            {/* Email Winner Section */}
+                            <div className="mb-6">
+                                <label className="label">
+                                    <span className="label-text text-sm">
+                                        Email Winner{' '}
+                                        <Tooltip
+                                            text="Choose whether to automatically email the winner when the draw is completed."
+                                            direction="tooltip-left"
+                                        />
+                                    </span>
+                                </label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="checkbox"
+                                        className="toggle toggle-primary"
+                                        checked={packageData.emailWinner !== false}
+                                        onChange={(e) => setPackageData(prev => ({ ...prev, emailWinner: e.target.checked }))}
+                                        disabled={loading || isLocked || isInactive}
+                                    />
+                                    <span className="text-sm text-gray-600">
+                                        Automatically email the winner when draw is completed
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Terms block - exactly like CreateDraw */}
+                            <div className="rounded-xl border border-gray-200 bg-white p-5">
+                                <div className="flex items-start gap-3">
+                                    <div className="shrink-0 rounded-xl bg-purple-100 text-purple-600 p-3">
+                                        <FaRegFileLines className="text-lg" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-left">Membership Terms &amp; Conditions</p>
+                                        <p className="mt-1 text-sm text-gray-600 text-left">
+                                            The default VivaClub terms will be applied to your membership. You can edit them here to add or remove any clauses specific to this membership.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 text-left">
+                                    <button
+                                        type="button"
+                                        onClick={openTermsModal}
+                                        className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                                        disabled={isLocked || loading || isInactive}
+                                    >
+                                        <FaPen /> Edit Terms
+                                    </button>
+                                </div>
+                                <div className="mt-4 flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2">
+                                    <FaTriangleExclamation className="mt-0.5 text-yellow-600" />
+                                    <p className="text-xs text-gray-700 text-left">
+                                        Once published, terms cannot be edited—only canceled.
+                                    </p>
+                                </div>
+                            </div>
+
                             <button
                                 type="submit"
-                                className="btn btn-primary w-full rounded-btn font-semibold mt-4">
+                                className="btn btn-primary w-full rounded-btn font-semibold mt-4"
+                                disabled={loading || isInactive}>
                                 {loading ? (
                                     <span className="loading loading-dots loading-md items-center"></span>
                                 ) : (
-                                    'Create Membership'
+                                    packageId ? 'Update Membership' : 'Create Membership'
                                 )}
                             </button>
                         </div>
@@ -700,6 +1123,46 @@ Your potential earnings would be ${currency} ${calculateEarnings(price).netEarni
                 text={showPopup.text}
                 button1={{ name: 'OK', onClick: closePopup, mode: 'btn-primary w-20 text-white' }}
             />
+        {/* Terms & Conditions Modal */}
+        {showTermsModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 overflow-hidden">
+                <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl p-4 max-h-[90vh] flex flex-col overflow-hidden">
+                    <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                        <h3 className="text-lg font-semibold">{termsEdited ? 'Edit Terms & Conditions (this membership)' : 'New Terms & Conditions (this membership)'}</h3>
+                        <button onClick={closeTermsModal} className="btn btn-sm">✕</button>
+                    </div>
+                    <div className="border rounded-lg flex-1 overflow-y-scroll">
+                        {termsModalLoading ? (
+                            <div className="flex items-center justify-center h-full"><span className="loading loading-dots loading-md"></span></div>
+                        ) : (
+                            <div className="h-full overflow-hidden">
+                                <ReactQuill
+                                    theme="snow"
+                                    value={termsContent}
+                                    onChange={setTermsContent}
+                                    style={{ height: '100%' }}
+                                    modules={{
+                                        toolbar: [
+                                            [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                                            ['bold', 'italic', 'underline', 'strike'],
+                                            [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                                            [{ 'color': [] }, { 'background': [] }],
+                                            [{ 'align': [] }],
+                                            ['link', 'blockquote', 'code-block'],
+                                            ['clean']
+                                        ],
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex justify-end gap-2 mt-3 flex-shrink-0">
+                        <button className="btn" onClick={closeTermsModal}>Cancel</button>
+                        <button className="btn btn-primary" onClick={saveTermsModal}>Save</button>
+                    </div>
+                </div>
+            </div>
+        )}
         </>
     );
 };

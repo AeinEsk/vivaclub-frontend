@@ -2,7 +2,7 @@ export type Tier = {
     id?: number;
     name: string;
     price: number | null;
-    chanceOfWin: number | null;
+    numberOfTicket: number | null;
     highlight?: string;
     recurringEntry: number | null;
     deactivatedAt?: string | null;
@@ -26,6 +26,8 @@ export type PackageFormData = {
     timezone: string;
     tiers: Tier[];
     discounts: DiscountData[];
+    promoPeriods?: Array<{ start: string; end: string; multiplier: number }>;
+    emailWinner?: boolean;
 };
 
 export type CollapseCard = {

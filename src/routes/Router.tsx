@@ -93,7 +93,7 @@ const Router = () => {
                 path={PATHS.EDIT_PACKAGE}
                 element={
                     <ProtectedRoute>
-                        <Header title="Edit Packages" backIcon={true}>
+                        <Header title="Edit Package" backIcon={true}>
                             <CreatePackage />
                         </Header>
                     </ProtectedRoute>

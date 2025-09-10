@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createDraw, uploadImage, updateDraw, getDrawInfoById } from '../../api/draws';
 import { PATHS } from '../../routes/routes';
@@ -12,8 +12,9 @@ import Alert from '../../components/alert/Alert';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { fetchTerms } from '../../api/terms';
-import { FaPen, FaRegFileLines, FaTriangleExclamation, FaTrash } from 'react-icons/fa6';
+import { FaPen, FaRegFileLines, FaTriangleExclamation, FaTrash, FaPlus, FaXmark } from 'react-icons/fa6';
 import { HOST_API } from '../../api/config';
+import { validatePromoPeriods, getNowInTimezone } from '../../utils/validation';
 
 const calculateEarnings = (entryCost: number) => {
     const participants = 10000;
@@ -87,6 +88,7 @@ const CreateDraw = () => {
     const [loading, setLoading] = useState(false);
     const [imgLoading, setImgLoading] = useState(false);
     const [isLocked, setIsLocked] = useState(false);
+    const [isInactive, setIsInactive] = useState(false);
     const [initialLoading, setInitialLoading] = useState(false);
     const today = new Date().toISOString().slice(0, 16);
     const navigate = useNavigate();
@@ -167,7 +169,7 @@ const CreateDraw = () => {
         register,
         handleSubmit,
         setValue,
-        formState: { errors },
+        formState: { errors, dirtyFields },
         watch,
         reset
     } = useForm<FormData>({
@@ -188,6 +190,12 @@ const CreateDraw = () => {
 
     const entryCost = watch('entryCost');
     const currency = watch('currency');
+    const [promoPeriods, setPromoPeriods] = useState<Array<{ start: string; end: string; multiplier: number }>>([]);
+    const [promoPeriodsError, setPromoPeriodsError] = useState<string>('');
+    const promoPeriodsRef = useRef<HTMLDivElement>(null);
+
+    // Use server-provided ISO without transforming timezone to avoid shifting hours on reload
+    const toInputFromServerIso = (iso?: string) => (iso ? String(iso).slice(0, 16) : '');
 
     // Load draw if in edit mode
     useEffect(() => {
@@ -197,7 +205,7 @@ const CreateDraw = () => {
                 setInitialLoading(true);
                 const res = await getDrawInfoById(drawId);
                 const d = res.data;
-                const formattedRunAt = new Date(d.runAt).toISOString().slice(0, 16);
+                const formattedRunAt = toInputFromServerIso(d.runAt);
                 reset({
                     name: d.name,
                     runAt: formattedRunAt,
@@ -211,15 +219,28 @@ const CreateDraw = () => {
                     emailWinner: d.emailWinner !== false,
                     discounts: d.discounts || []
                 });
-                setIsLocked(((d.noOfPartic ?? 0) > 0) || !!d.deactivatedAt);
+                const nowIso = new Date().toISOString();
+                const expired = !!d.runAt && nowIso >= d.runAt;
+                setIsLocked(((d.noOfPartic ?? 0) > 0));
+                setIsInactive(!!d.deactivatedAt || expired);
                 // preload discounts and terms UI state
                 if (Array.isArray(d.discounts)) {
                     setDiscountItems(d.discounts);
+                }
+                if (Array.isArray(d.promoPeriods)) {
+                    setPromoPeriods(
+                        d.promoPeriods.map((p: any) => ({
+                            start: p.start ? p.start.slice(0, 16) : '',
+                            end: p.end ? p.end.slice(0, 16) : '',
+                            multiplier: Number(p.multiplier) || 1
+                        }))
+                    );
                 }
                 if (d.termsHtml) {
                     setTermsContent(d.termsHtml);
                     setTermsEdited(true);
                 }
+                // No-op: runAt changes will be detected via react-hook-form dirtyFields
                 // Set current image URL if exists
                 if (d.imageId) {
                     setCurrentImageUrl(`${HOST_API}/public/download/${d.imageId}`);
@@ -233,30 +254,75 @@ const CreateDraw = () => {
         load();
     }, [drawId, reset]);
 
+    const validatePromoPeriodsLocal = () => {
+        const isUpdate = !!drawId;
+        const validation = validatePromoPeriods(promoPeriods, { 
+            runAt: watch('runAt'),
+            timezone: watch('timezone'),
+            isUpdateMode: isUpdate,
+            validateNotInPast: !isUpdate
+        });
+        
+        if (!validation.isValid && validation.errorMessage) {
+            setPromoPeriodsError(validation.errorMessage);
+            // Scroll to promotional periods section
+            promoPeriodsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+        
+        setPromoPeriodsError('');
+        
+        return true;
+    };
+
     const onSubmit = async (data: FormData) => {
         try {
             setLoading(true);
             setError('');
 
-            const formDataWithDiscounts: any = {
-                ...data,
-                discounts: discountItems,
-                termsHtml: termsEdited ? termsContent : undefined
-            };
-            // Handle image removal: send null to remove image, or keep current value
-            if (drawId) {
-                if (data.imageId === undefined) {
-                    // User removed the image, send null to delete it
-                    formDataWithDiscounts.imageId = null;
-                } else if (!data.imageId) {
-                    // No new image uploaded, don't send imageId field to keep existing
-                    delete formDataWithDiscounts.imageId;
+            // Validate promotional periods before submission
+            if (!validatePromoPeriodsLocal()) {
+                setLoading(false);
+                return;
+            }
+
+            // Build promo periods payload from state
+            const nextPromo = (promoPeriods || [])
+                .filter(p => p.start && p.end && Number(p.multiplier) >= 1)
+                .map(p => ({ start: p.start, end: p.end, multiplier: Math.max(1, Math.floor(Number(p.multiplier))) }));
+
+            let payload: any;
+            if (drawId && isLocked) {
+                // When locked in edit mode, only send promoPeriods
+                payload = { promoPeriods: nextPromo };
+            } else {
+                payload = {
+                    ...data,
+                    discounts: discountItems,
+                    termsHtml: termsEdited ? termsContent : undefined,
+                    promoPeriods: nextPromo
+                };
+                // Handle image removal: send null to remove image, or keep current value
+                if (drawId) {
+                    if (data.imageId === undefined) {
+                        payload.imageId = null;
+                    } else if (!data.imageId) {
+                        delete payload.imageId;
+                    }
+                    // Preserve original runAt if user didn't change it
+                    if (!(dirtyFields as any)?.runAt) {
+                        delete payload.runAt;
+                    }
+                    // Preserve original timezone if user didn't change it
+                    if (!(dirtyFields as any)?.timezone) {
+                        delete payload.timezone;
+                    }
                 }
             }
 
             const response = drawId
-                ? await updateDraw(drawId, formDataWithDiscounts)
-                : await createDraw(formDataWithDiscounts);
+                ? await updateDraw(drawId, payload)
+                : await createDraw(payload);
 
             if (response && response.data) {
                 navigate(PATHS.WELCOME);
@@ -266,8 +332,13 @@ const CreateDraw = () => {
             }
         } catch (error: any) {
             console.error('Detailed error:', error);
-            const message = error?.response?.data?.error || (drawId ? 'Draw cannot be edited.' : 'An error occurred while creating the draw');
-            setError(message);
+            const status = error?.response?.status;
+            if (status === 409 && drawId) {
+                setError('This draw is locked. Only Promotional periods can be edited.');
+            } else {
+                const message = error?.response?.data?.error || (drawId ? 'Draw cannot be edited.' : 'An error occurred while creating the draw');
+                setError(message);
+            }
         } finally {
             setLoading(false);
         }
@@ -306,7 +377,7 @@ const CreateDraw = () => {
                 <form onSubmit={handleSubmit(onSubmit)} noValidate>
                     {isLocked && (
                         <div className="mb-4">
-                            <Alert type="simple-outline" message={'This draw can no longer be edited because tickets have been sold or a payment is in progress.'} />
+                            <Alert type="simple-outline" message={'This draw is locked due to tickets sold, payments in progress, or deactivation. Only Promotional periods can be edited.'} />
                         </div>
                     )}
                     <div>
@@ -324,7 +395,7 @@ const CreateDraw = () => {
                             type="text"
                             placeholder="Enter draw name"
                             className="input input-bordered w-full"
-                            disabled={loading || isLocked}
+                            disabled={loading || isLocked || isInactive}
                             {...register('name')}
                         />
                         <label className="label">
@@ -350,7 +421,7 @@ const CreateDraw = () => {
                             <input
                                 type="datetime-local"
                                 className="input input-bordered  w-full"
-                                disabled={loading || isLocked}
+                                disabled={loading || isLocked || isInactive}
                                 min={today}
                                 {...register('runAt')}
                             />
@@ -368,7 +439,7 @@ const CreateDraw = () => {
                             </label>
                             <select
                                 className="select select-bordered  w-full"
-                                disabled={loading || isLocked}
+                                disabled={loading || isLocked || isInactive}
                                 {...register('timezone')}>
                                 <option value="" disabled>
                                     Choose Timezone
@@ -386,9 +457,178 @@ const CreateDraw = () => {
                                     </span>
                                 )}
                             </label>
+
                         </div>
                     </div>
+                    <div>
+                        {/* Promotional periods */}
+                        <div className="mt-4 mb-4" ref={promoPeriodsRef}>
+                            <div className="flex items-center justify-between">
+                                <label className="label">
+                                    <span className="label-text">Promotional periods{' '}
+                                        <Tooltip
+                                            text="Boost entries for a set period. e.g. ‘Every ticket = 2 entries’ or ‘Every $1 = 2 entries."
+                                            direction="tooltip-left"
+                                        />
+                                    </span>
+                                </label>
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                                    disabled={loading || isInactive}
+                                    onClick={() => {
+                                        const runAtVal = watch('runAt');
+                                        const timezone = watch('timezone');
+                                        const nowIso = getNowInTimezone(timezone);
+                                        // Default start 15 minutes from now to avoid immediate past on submit
+                                        const nowPlus15 = (() => {
+                                            const d = new Date();
+                                            d.setMinutes(d.getMinutes() + 15);
+                                            return new Intl.DateTimeFormat('sv-SE', {
+                                                timeZone: timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+                                                year: 'numeric',
+                                                month: '2-digit',
+                                                day: '2-digit',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            }).format(d).replace(' ', 'T');
+                                        })();
+                                        const existing = (promoPeriods || []).filter(p => p.start && p.end);
+                                        const lastEnd = existing.length
+                                            ? existing
+                                                .slice()
+                                                .sort((a, b) => (a.start || '').localeCompare(b.start || ''))
+                                                .at(-1)!.end
+                                            : '';
+                                        const start = lastEnd && lastEnd > nowPlus15 ? lastEnd : nowPlus15;
+                                        // If draw date exists and is before start, clamp end to start; else use draw date
+                                        const end = runAtVal && runAtVal > start ? runAtVal : start;
+                                        const newPeriod = { start, end, multiplier: 1 };
+                                        setPromoPeriods([...(promoPeriods || []), newPeriod]);
+                                    }}
+                                >
+                                    <FaPlus className="w-4 h-4 mr-1" />
+                                    Add period
+                                </button>
+                            </div>
+                            {(promoPeriods || []).map((p, idx) => {
+                                const runAtVal = watch('runAt');
+                                const timezone = watch('timezone');
+                                const nowIso = getNowInTimezone(timezone);
+                                const startInvalid = !!p.start && !!p.end && p.start >= p.end;
+                                const afterRun = !!runAtVal && (!!p.end && p.end > runAtVal);
 
+                                // Live overlap guards: compute adjacent bounds based on sorted periods
+                                const sorted = (promoPeriods || [])
+                                    .map((pp, i) => ({ i, s: pp.start || '' }))
+                                    .sort((a, b) => a.s.localeCompare(b.s));
+                                const pos = sorted.findIndex(x => x.i === idx);
+                                const prevEnd = pos > 0 ? (promoPeriods[sorted[pos - 1].i]?.end || '') : '';
+                                const nextStart = pos >= 0 && pos < sorted.length - 1 ? (promoPeriods[sorted[pos + 1].i]?.start || '') : '';
+                                const startMinBase = prevEnd && prevEnd > nowIso ? prevEnd : nowIso;
+                                // Bump min by +1 minute to reduce race with current time on slow interactions
+                                const startMin = (() => {
+                                    try {
+                                        const d = new Date(startMinBase);
+                                        d.setMinutes(d.getMinutes() + 1);
+                                        return d.toISOString().slice(0, 16);
+                                    } catch {
+                                        return startMinBase;
+                                    }
+                                })();
+                                const startMax = nextStart || runAtVal || undefined;
+                                const endMin = p.start || startMin;
+                                const endMax = nextStart || runAtVal || undefined;
+
+                                return (
+                                    <div key={idx} className="mt-2 p-3 border border-gray-200 rounded-lg">
+                                        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+                                            <div className="md:col-span-4">
+                                                <label className="label"><span className="label-text text-sm">Start</span></label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="input input-bordered w-full"
+                                                    disabled={loading || isInactive}
+                                                    value={p.start}
+                                                    min={drawId ? undefined : startMin}
+                                                    max={startMax}
+                                                    onChange={(e) => {
+                                                        const v = e.target.value;
+                                                        const copy = [...promoPeriods];
+                                                        copy[idx] = { ...copy[idx], start: v };
+                                                        setPromoPeriods(copy);
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="md:col-span-4">
+                                                <label className="label"><span className="label-text text-sm">End</span></label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="input input-bordered w-full"
+                                                    disabled={loading || isInactive}
+                                                    value={p.end}
+                                                    min={endMin}
+                                                    max={endMax}
+                                                    onChange={(e) => {
+                                                        const v = e.target.value;
+                                                        const copy = [...promoPeriods];
+                                                        copy[idx] = { ...copy[idx], end: v };
+                                                        setPromoPeriods(copy);
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <label className="label"><span className="label-text text-sm">Multiplier</span></label>
+                                                <input
+                                                    type="number"
+                                                    className="input input-bordered w-full"
+                                                    min={1}
+                                                    disabled={loading || isInactive}
+                                                    value={p.multiplier}
+                                                    onChange={(e) => {
+                                                        const v = Math.max(1, Math.floor(Number(e.target.value || 1)));
+                                                        const copy = [...promoPeriods];
+                                                        copy[idx] = { ...copy[idx], multiplier: v };
+                                                        setPromoPeriods(copy);
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="md:col-span-2 flex items-end">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline btn-error w-full"
+                                                    disabled={loading || isInactive}
+                                                    onClick={() => setPromoPeriods(promoPeriods.filter((_, i) => i !== idx))}
+                                                    aria-label={`Remove period ${idx + 1}`}
+                                                >
+                                                    <span className="md:hidden">Remove</span>
+                                                    <span className="hidden md:flex items-center justify-center">
+                                                        <FaXmark className="w-4 h-4 lg:mr-2" />
+                                                        <span className="hidden lg:inline">Remove</span>
+                                                    </span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {(startInvalid || afterRun) && (
+                                            <div className="mt-2">
+                                                <span className="text-xs text-red-600">
+                                                    {startInvalid ? 'Start must be before End.' : 'End must be before draw date.'}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        {promoPeriodsError && (
+                            <label className="label">
+                                <span className="label-text-alt text-red-600 font-semibold">
+                                    {promoPeriodsError}
+                                </span>
+                            </label>
+                        )}
+
+                    </div>
                     <div>
                         <label className="label">
                             <span className="label-text text-sm">
@@ -402,7 +642,7 @@ const CreateDraw = () => {
                         <textarea
                             placeholder="Enter draw prize"
                             className="textarea input-bordered  w-full"
-                            disabled={loading || isLocked}
+                            disabled={loading || isLocked || isInactive}
                             {...register('prize')}
                         />
                         <label className="label">
@@ -430,7 +670,7 @@ const CreateDraw = () => {
                                     placeholder="Enter entry cost"
                                     step="any"
                                     className="input input-bordered w-full"
-                                    disabled={loading || isLocked}
+                                    disabled={loading || isLocked || isInactive}
                                     {...register('entryCost', { valueAsNumber: true })}
                                     min={1}
                                 />
@@ -449,7 +689,7 @@ const CreateDraw = () => {
                                 </label>
                                 <select
                                     className="select select-bordered w-full"
-                                    disabled={loading || isLocked}
+                                    disabled={loading || isLocked || isInactive}
                                     defaultValue="AUD"
                                     {...register('currency')}>
                                     <option value="" disabled>
@@ -494,7 +734,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                         </label>
                         <select
                             className="select select-bordered  w-full"
-                            disabled={loading || isLocked}
+                            disabled={loading || isLocked || isInactive}
                             {...register('runMethod')}>
                             <option value="" disabled>
                                 Choose Draw Type
@@ -524,7 +764,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                                 type="number"
                                 placeholder="e.g. 1000"
                                 className="input input-bordered w-full"
-                                disabled={loading || isLocked}
+                                disabled={loading || isLocked || isInactive}
                                 {...register('ticketCap', { valueAsNumber: true })}
                                 min={1}
                             />
@@ -562,7 +802,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                             </label>
                             <select
                                 className="select select-bordered w-full h-9 min-h-[36px] text-sm"
-                                disabled={loading || isLocked}
+                                disabled={loading || isLocked || isInactive}
                                 {...register('discounts.0.type')}>
                                 <option value="">Select</option>
                                 {discountTypes.map((type, index) => (
@@ -643,9 +883,9 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                             className="file-input file:bg-primary/10 file:text-primary file:border-none file-input-bordered w-full"
                             accept=".jpeg, .jpg, .png"
                             onChange={handleFileChange}
-                            disabled={loading || isLocked}
+                            disabled={loading || isLocked || isInactive}
                         />
-                        
+
                         {/* Current Image Display */}
                         {currentImageUrl && (
                             <div className="mt-4">
@@ -668,7 +908,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                                 </div>
                             </div>
                         )}
-                        
+
                         <div className="label">
                             {!error ? (
                                 <span className="label-text-alt">
@@ -703,7 +943,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                                 className="toggle toggle-primary"
                                 checked={watch('emailWinner') !== false}
                                 onChange={(e) => setValue('emailWinner', e.target.checked)}
-                                disabled={loading || isLocked}
+                                disabled={loading || isLocked || isInactive}
                             />
                             <span className="text-sm text-gray-600">
                                 Automatically email the winner when draw is completed
@@ -767,7 +1007,7 @@ Your potential earnings would be ${currency} ${calculateEarnings(entryCost).netE
                     <button
                         type="submit"
                         className="btn btn-primary w-full rounded-btn font-normal mt-4 bottom-0"
-                        disabled={loading || isLocked}>
+                        disabled={loading || isInactive}>
                         {loading ? (
                             <span className="loading loading-dots loading-md items-center"></span>
                         ) : (

@@ -65,6 +65,15 @@ const MenuCol = ({ membershipId }: MenuCol) => {
                         <a
                             className="text-sm"
                             onClick={() =>
+                                navigate(PATHS.EDIT_PACKAGE.replace(':packageId', membershipId))
+                            }>
+                            Edit Package
+                        </a>
+                    </li>
+                    <li>
+                        <a
+                            className="text-sm"
+                            onClick={() =>
                                 navigate(PATHS.PACKAGE_USERS.replace(':packageId', membershipId))
                             }>
                             Memberships

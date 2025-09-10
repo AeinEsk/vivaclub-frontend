@@ -3,9 +3,12 @@ import InfoBtn from '../../components/infoButton/InfoBtn';
 import { useEffect, useState } from 'react';
 import Loading from '../../components/loading/Loading';
 import { PATHS } from '../../routes/routes';
-import { getDrawInfoById } from '../../api/draws';
+import { getDrawInfoById, getCurrentPromo } from '../../api/draws';
+import { getNowInTimezone } from '../../utils/validation';
+
 import { HOST_API } from '../../api/config';
 import { dateConverter } from '../../components/dateConverter/DateConverter';
+
 import {
     FaDollarSign,
     FaGift,
@@ -47,6 +50,14 @@ const DrawInfo = () => {
     const today = new Date();
     const formattedDate = today.toISOString();
 
+    const [promoPreview, setPromoPreview] = useState<{
+        multiplier: number;
+        extras?: number;
+        totalEntries?: number;
+        loading?: boolean;
+        error?: boolean;
+    } | null>(null);
+
     useEffect(() => {
         (async () => {
             if (drawId) {
@@ -78,17 +89,83 @@ const DrawInfo = () => {
         })();
     }, []);
 
+    // Fetch promo preview whenever numTickets changes so user can see final tickets
+    useEffect(() => {
+        let active = true;
+        const fetchPromo = async () => {
+            if (!drawId || !numTickets || numTickets <= 0) {
+                setPromoPreview(null);
+                return;
+            }
+            try {
+                setPromoPreview((prev) => ({ ...(prev || { multiplier: 1 }), loading: true, error: false }));
+                // Primary: server-side promo
+                try {
+                    const { data } = await getCurrentPromo(drawId, Number(numTickets));
+                    if (!active) return;
+                    if (data && typeof data.multiplier === 'number') {
+                        setPromoPreview({
+                            multiplier: data?.multiplier ?? 1,
+                            extras: data?.extras,
+                            totalEntries: data?.totalEntries,
+                            loading: false,
+                            error: false
+                        });
+                        return;
+                    }
+                } catch (_) {
+                    // ignore and fallback below
+                }
+
+                // Fallback: compute via timezone + promo periods
+                const res = await getDrawInfoById(drawId);
+                const draw = res?.data || {};
+                const tz: string | undefined = draw?.timezone;
+                const nowLocal = getNowInTimezone(tz);
+                const nowKey = String(nowLocal).slice(0, 16);
+                const periods: Array<{ start: string; end: string; multiplier: number }> = Array.isArray(draw?.promoPeriods) ? draw.promoPeriods : [];
+                const activePeriod = periods.find(p => (p.start || '').slice(0, 16) <= nowKey && nowKey < (p.end || '').slice(0, 16));
+                const m = activePeriod?.multiplier ?? 1;
+                const cnt = Number(numTickets);
+                const totalEntries = Number.isFinite(cnt) ? cnt * m : undefined;
+                if (!active) return;
+                setPromoPreview({ multiplier: m, extras: activePeriod ? (totalEntries ? totalEntries - cnt : undefined) : undefined, totalEntries, loading: false, error: false });
+            } catch (e) {
+                if (!active) return;
+                setPromoPreview({ multiplier: 1, loading: false, error: true });
+            }
+        };
+        fetchPromo();
+        return () => {
+            active = false;
+        };
+    }, [drawId, numTickets]);
+
     const handleStatus = (date: string) => {
         if (date > formattedDate) {
             return true;
         } else return false;
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         const totalCost = numTickets * drawInfo.ticketPrice;
         const mode = 'draw';
         const currency = drawInfo.currency;
-        navigate(PATHS.TOTAL, { state: { mode, drawId, numTickets, totalCost, currency } });
+        let promo: { multiplier: number; extras?: number; totalEntries?: number } | undefined = undefined;
+        try {
+            if (drawId) {
+                const { data } = await getCurrentPromo(drawId, numTickets);
+                promo = {
+                    multiplier: data?.multiplier ?? 1,
+                    extras: data?.extras,
+                    totalEntries: data?.totalEntries
+                };
+            }
+        } catch (e) {
+            // fail open: do not block navigation if promo endpoint errors
+            promo = undefined;
+        }
+        navigate(PATHS.TOTAL, { state: { mode, drawId, numTickets, totalCost, currency, promo } });
     };
 
     return (
@@ -222,6 +299,21 @@ const DrawInfo = () => {
                                                         setNumTickets(Number(e.target.value))
                                                     }
                                                 />
+                                            </div>
+                                            {/* Promo / Final tickets preview */}
+                                            <div className="mt-2 text-xs text-secondary text-right">
+                                                {promoPreview?.loading ? (
+                                                    <span className="loading loading-dots loading-xs"></span>
+                                                ) : (
+                                                    <>
+                                                        <span className="font-medium">You will get: {promoPreview && promoPreview.totalEntries ? promoPreview.totalEntries : numTickets} subscriptions</span>
+                                                        {promoPreview && (promoPreview.multiplier || 1) > 1 && (
+                                                            <div className="text-[11px] text-gray-500">
+                                                                {Number(numTickets)} × ({promoPreview.multiplier} Promo) = {promoPreview.totalEntries ?? Number(numTickets) * (promoPreview.multiplier || 1)}
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                         <button

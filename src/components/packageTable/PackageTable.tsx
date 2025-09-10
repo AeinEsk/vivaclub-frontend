@@ -1,6 +1,7 @@
 import { Membership } from '../../@types/packageForm';
 import { dateConverter } from '../dateConverter/DateConverter';
 import MenuCol from './MenuCol';
+import { FaCheck, FaBan, FaRegCalendarXmark } from 'react-icons/fa6';
 
 interface Package {
     packageData: Membership[];
@@ -11,6 +12,9 @@ interface Package {
 }
 
 const PackageTable = ({ packageData, from, to, loading, compact }: Package) => {
+    const nowIso = new Date().toISOString();
+    const getCompareDate = (pkg: Membership) => pkg.nextDrawIn || pkg.drawDate;
+    const handleStatus = (date?: string) => !!date && date > nowIso;
     return (
         <div>
             <div className="w-full">
@@ -23,14 +27,15 @@ const PackageTable = ({ packageData, from, to, loading, compact }: Package) => {
                     <thead>
                         <tr>
                             <th className="table-header text-left">Date</th>
+                            <th className="table-header text-left">Name</th>
                             <th className="table-header text-left">
-                            {compact ? 'Freq' : 'Frequency'}
+                                {compact ? 'Freq' : 'Frequency'}
 
                             </th>
-                            <th className="table-header text-center">Status</th>
                             <th className="text-xs capitalize px-2">
                                 {compact ? 'No.S' : 'No. of subscribers'}
-                            </th>
+                            </th>                            <th className="table-header text-center">Status</th>
+
                             <th className="table-header text-center">Menu</th>
                         </tr>
                     </thead>
@@ -57,6 +62,30 @@ const PackageTable = ({ packageData, from, to, loading, compact }: Package) => {
                                     <td className="table-cell text-center">
                                         <span className="status-badge">{pkg.membersCount}</span>
                                     </td>
+                                    <td className="table-cell">
+                                        <div className="flex justify-center">
+                                            {compact ? (
+                                                <div
+                                                    className="tooltip tooltip-top"
+                                                    data-tip={pkg.deactivatedAt ? 'Cancelled' : handleStatus(getCompareDate(pkg)) ? 'Published' : 'Expired'}>
+                                                    <div className={`status-icon-wrapper ${pkg.deactivatedAt ? 'inactive' : (handleStatus(getCompareDate(pkg)) ? 'active' : 'inactive')}`}>
+                                                        {pkg.deactivatedAt ? (
+                                                            <FaBan className="status-icon" />
+                                                        ) : handleStatus(getCompareDate(pkg)) ? (
+                                                            <FaCheck className="status-icon" />
+                                                        ) : (
+                                                            <FaRegCalendarXmark className="status-icon" />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className={`badge badge-outline ${pkg.deactivatedAt ? 'badge-error' : handleStatus(getCompareDate(pkg)) ? 'badge-success' : 'badge-warning'} font-normal text-xs`}>
+                                                    {pkg.deactivatedAt ? 'Cancelled' : handleStatus(getCompareDate(pkg)) ? 'Published' : 'Expired'}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+
                                     <MenuCol membershipId={pkg.id} />
                                 </tr>
                             );

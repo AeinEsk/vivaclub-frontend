@@ -1,7 +1,10 @@
 import { axiosInstance } from '../utils/axios';
 
-export const fetchTerms = (drawId?: string) => {
-  const qs = drawId ? `?drawId=${encodeURIComponent(drawId)}` : '';
+export const fetchTerms = (drawId?: string, membershipId?: string) => {
+  const params: string[] = [];
+  if (drawId) params.push(`drawId=${encodeURIComponent(drawId)}`);
+  if (membershipId) params.push(`membershipId=${encodeURIComponent(membershipId)}`);
+  const qs = params.length ? `?${params.join('&')}` : '';
   return axiosInstance.get(`/public/club-owner/terms${qs}`);
 };
 

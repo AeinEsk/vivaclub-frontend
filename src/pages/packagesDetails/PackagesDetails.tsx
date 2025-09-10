@@ -77,7 +77,7 @@ const PackagesDetails = () => {
                                     currency={tier.currency}
                                     drawDate={memberships?.nextDrawIn}
                                     purchase={false}
-                                    chanceOfWin={`${tier.chanceOfWin}`}
+                                    numberOfTicket={`${tier.numberOfTicket}`}
                                     deactivatedAt={tier.deactivatedAt}
                                     showCancelAlert={true}
                                 />

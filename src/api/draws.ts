@@ -4,6 +4,7 @@ import { axiosInstance } from '../utils/axios';
 const CREATE_DRAW = '/api/club-owner/draw/';
 const DRAW_LIST = '/api/club-owner/draw';
 const DRAW_BY_ID = '/public/club-owner/draw/';
+const DRAW_PROMO = '/public/club-owner/draw/';
 const DRAW_STATS = '/api/club-owner/draw/';
 const UPLOAD_IMAGE = '/api/upload/';
 const DRAW_MEMBERSHIPS = '/api/club-owner/draw/membership/';
@@ -32,7 +33,8 @@ export const createDraw = (drawData: DrawFormData) => {
         ticketCap: drawData.ticketCap,
         // numbers settings are calculated server-side
         termsHtml: drawData.termsHtml,
-        emailWinner: drawData.emailWinner
+        emailWinner: drawData.emailWinner,
+        promoPeriods: drawData.promoPeriods
     };
 
     return axiosInstance.post(CREATE_DRAW, payload);
@@ -46,6 +48,12 @@ export const getDrawsList = (drawFilters: Partial<DrawListFilter>) => {
 
 export const getDrawInfoById = (drawId: string) => {
     return axiosInstance.get(`${DRAW_BY_ID}${drawId}`);
+};
+
+// Get current promo multiplier and optional extras for a base count
+export const getCurrentPromo = (drawId: string, base?: number) => {
+    const qs = base !== undefined ? `?base=${encodeURIComponent(String(base))}` : '';
+    return axiosInstance.get(`${DRAW_PROMO}${drawId}/promo${qs}`);
 };
 
 export const getDrawStats = (drawId: string) => {

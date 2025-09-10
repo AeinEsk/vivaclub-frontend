@@ -4,19 +4,21 @@ import { useState } from 'react';
 interface AccordionProps {
     name: string;
     price: number;
-    chanceOfWin: number;
+    numberOfTicket: number;
     recurringEntry: number;
     highlight?: string;
     onDelete: (e?: React.MouseEvent) => void;
+    disabled?: boolean;
 }
 
 const AccordionPackage: React.FC<AccordionProps> = ({
     name,
     price,
-    chanceOfWin,
+    numberOfTicket,
     recurringEntry,
     highlight,
-    onDelete
+    onDelete,
+    disabled = false
 }) => {
     const [isOpen, setIsOpen] = useState(false);
 
@@ -40,7 +42,12 @@ const AccordionPackage: React.FC<AccordionProps> = ({
                         e.stopPropagation();
                         onDelete(e);
                     }}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-gray-200 rounded-lg transition-colors duration-200"
+                    disabled={disabled}
+                    className={`p-2 rounded-lg transition-colors duration-200 ${
+                        disabled 
+                            ? 'text-gray-300 cursor-not-allowed' 
+                            : 'text-gray-400 hover:text-red-500 hover:bg-gray-200'
+                    }`}
                 >
                     <FaXmark className="w-4 h-4" />
                 </button>
@@ -51,7 +58,7 @@ const AccordionPackage: React.FC<AccordionProps> = ({
                     <div className="space-y-2">
                         <div className="flex justify-between">
                             <span className="text-gray-600">Number of Tickets:</span>
-                            <span className="font-medium">{chanceOfWin}</span>
+                            <span className="font-medium">{numberOfTicket}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-600">Recurring Entry:</span>

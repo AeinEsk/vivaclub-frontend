@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getPackageMembeships } from '../../api/packages';
+import { getPackageMembeships, getMembershipById } from '../../api/packages';
 import PckageUserTable from '../../components/userTable/PckageUserTable';
 import { PackageMembersFilter } from '../../@types/packageForm';
 import { DrawMembersFilter } from '../../@types/darw';
@@ -17,6 +17,7 @@ interface Membership {
 const PackageMemberships = () => {
     const { packageId } = useParams<{ packageId: string }>();
     const [userData, setUserData] = useState<Membership[]>([]);
+    const [tierTicketsMap, setTierTicketsMap] = useState<Record<string, number> | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [totalPages, setTotlaPages] = useState<number>(1);
@@ -40,6 +41,21 @@ const PackageMemberships = () => {
                     if (data.length !== 0) {
                         setUserData(data?.members);
                         setTotlaPages(data?.totalPages);
+                    }
+                    // fetch membership tiers to map tierName -> numberOfTicket
+                    try {
+                        const res = await getMembershipById(packageId);
+                        const tiers = (res?.data?.tiers || []) as Array<any>;
+                        const map: Record<string, number> = {};
+                        tiers.forEach((t) => {
+                            if (t?.name) {
+                                const tickets = Number(t?.numberOfTicket ?? t?.numberOfTicket ?? 0);
+                                map[t.name] = tickets;
+                            }
+                        });
+                        setTierTicketsMap(map);
+                    } catch (_) {
+                        setTierTicketsMap(null);
                     }
                     setLoading(false);
                 } catch (e) {
@@ -89,7 +105,7 @@ const PackageMemberships = () => {
             </div>
             {userData.length !== 0 ? (
                 <>
-                    <PckageUserTable userInfo={userData} loading={loading} />
+                    <PckageUserTable userInfo={userData} loading={loading} tierTicketsMap={tierTicketsMap || undefined} />
                     <div className="flex justify-center mt-8">
                         <Pagination
                             totalPage={totalPages}

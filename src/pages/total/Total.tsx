@@ -10,7 +10,7 @@ import { FaRegEnvelope } from 'react-icons/fa6';
 
 const Total = () => {
     const location = useLocation();
-    const { mode, drawId, numTickets, totalCost, currency, tireId } = location.state || {};
+    const { mode, drawId, numTickets, totalCost, currency, tireId, promo } = location.state || {};
     const [email, setEmail] = useState<string>('');
     const [message, setMessage] = useState('');
     const [phone, setPhone] = useState<string>('');
@@ -112,10 +112,22 @@ const Total = () => {
                                 </div>
                             </div>
 
+                            {/* Promo breakdown (server-provided, no client recompute) */}
+                            {mode === 'draw' && typeof numTickets === 'number' && promo?.multiplier > 1 && (
+                                <div className="mt-3 text-xs text-left bg-gray-50 p-3 rounded-xl">
+                                    <div className="font-semibold text-secondary">Tickets</div>
+                                    <div className="mt-1 text-secondary">
+                                        {numTickets} + {promo?.extras ?? (promo?.totalEntries ? promo.totalEntries - numTickets : 0)} promotional ticket(s)
+                                        {typeof promo?.multiplier === 'number' && (
+                                            <span className="ml-1 text-primary">(x{promo.multiplier})</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             <h4 className="font-bold text-sm text-left my-5">
                                 Select Payment Method
                             </h4>
-                            {message && <p className="text-red-500 text-sm mt-2">{message}</p>}
 
                             <div className="w-full mt-5 flex flex-col gap-3">
                                 <button

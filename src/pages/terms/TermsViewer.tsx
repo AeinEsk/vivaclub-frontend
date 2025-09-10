@@ -8,8 +8,9 @@ const TermsViewer = () => {
 
   useEffect(() => {
     const drawId = searchParams.get('drawId') || undefined;
+    const membershipId = searchParams.get('membershipId') || undefined;
     (async () => {
-      const { data } = await fetchTerms(drawId);
+      const { data } = await fetchTerms(drawId, membershipId);
       setHtml(data?.html || '');
     })();
   }, [searchParams]);

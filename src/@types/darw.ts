@@ -11,6 +11,7 @@ export type DrawFormData = {
     ticketCap?: number;
     termsHtml?: string;
     emailWinner?: boolean;
+    promoPeriods?: Array<{ start: string; end: string; multiplier: number }>;
 };
 export interface DiscountData {
     type: string;

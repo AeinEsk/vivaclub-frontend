@@ -5,7 +5,7 @@ export const PATHS = {
     PROFILE: '/profile',
     CREATE_PACKAGE: '/profile/create-package',
     PACKAGE_LIST: '/profile/packages-list',
-    EDIT_PACKAGE: '/profile/edit-package',
+    EDIT_PACKAGE: '/profile/edit-package/:packageId',
     PACKAGE_DITAILS: '/profile/package-details/:packageId',
     CREATE_DRAW: '/profile/create-draw',
     CREATE_PROMO_DRAW: '/profile/create-promo-draw',

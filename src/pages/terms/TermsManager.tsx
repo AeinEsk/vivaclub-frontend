@@ -4,6 +4,7 @@ import { PATHS } from '../../routes/routes';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { fetchTerms, setGlobalTerms } from '../../api/terms';
+import { updateMembership } from '../../api/packages';
 
 // Custom styles for Quill editor
 const quillStyles = `
@@ -56,9 +57,12 @@ const TermsManager = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
   const drawId = searchParams.get('drawId');
-  const mode = searchParams.get('mode'); // 'draft' to edit draft copy during create-draw
+  const membershipId = searchParams.get('membershipId');
+  const mode = searchParams.get('mode'); // 'draft' to edit draft copy during create-draw or create-package
+  const context = searchParams.get('context'); // 'membership' or 'draw'
 
-  const isDraftMode = useMemo(() => mode === 'draft' && !drawId, [mode, drawId]);
+  const isDraftMode = useMemo(() => mode === 'draft' && !drawId && !membershipId, [mode, drawId, membershipId]);
+  const draftKey = useMemo(() => (context === 'membership' ? 'terms:membership:draft' : 'terms:draft'), [context]);
 
   // Quill editor configuration
   const modules = {
@@ -90,8 +94,13 @@ const TermsManager = () => {
         setContent(data?.html || '');
         return;
       }
+      if (membershipId) {
+        const { data } = await fetchTerms(undefined, membershipId);
+        setContent(data?.html || '');
+        return;
+      }
       if (isDraftMode) {
-        const draft = localStorage.getItem('terms:draft');
+        const draft = localStorage.getItem(draftKey);
         if (draft && draft.length > 0) {
           setContent(draft);
           return;
@@ -103,21 +112,39 @@ const TermsManager = () => {
       const { data } = await fetchTerms();
       setContent(data?.html || '');
     })();
-  }, [drawId, isDraftMode]);
+  }, [drawId, membershipId, isDraftMode, draftKey]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (drawId) {
-      // Per-draw editing would normally be done from a draw edit page; currently not used
+      // Per-draw editing is handled in the Draw edit/create forms via draft, not directly here
       setIsEditing(false);
       return;
     }
 
+    if (membershipId) {
+      // Update membership terms directly via API
+      try {
+        await updateMembership(membershipId, { termsHtml: content } as any);
+        setIsEditing(false);
+        // navigate back to edit package page
+        navigate(PATHS.EDIT_PACKAGE.replace(':packageId', membershipId));
+      } catch (_) {
+        setIsEditing(false);
+      }
+      return;
+    }
+
     if (isDraftMode) {
-      // Save draft to navigation state consumer (CreateDraw will read it from localStorage for now, then send to backend on create)
-      localStorage.setItem('terms:draft', content);
-      localStorage.setItem('terms:draftEdited', '1');
+      // Save draft to localStorage; Create pages will read it
+      localStorage.setItem(draftKey, content);
+      localStorage.setItem(`${draftKey}Edited`, '1');
       setIsEditing(false);
-      navigate(PATHS.CREATE_DRAW + `?termsDraftSaved=1`);
+      // Decide route by context
+      if (context === 'membership') {
+        navigate(PATHS.CREATE_PACKAGE + `?termsDraftSaved=1`);
+      } else {
+        navigate(PATHS.CREATE_DRAW + `?termsDraftSaved=1`);
+      }
       return;
     }
 
@@ -130,7 +157,7 @@ const TermsManager = () => {
       <style>{quillStyles}</style>
       <div className="w-full max-w-4xl left-0 shadow-xl py-8 px-5 rounded-2xl border border-border/30 bg-white">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold">{drawId ? 'Custom Terms & Conditions (this draw only)' : isDraftMode ? 'Terms & Conditions (copy for new draw)' : 'Default Terms & Conditions'}</h1>
+          <h1 className="text-lg font-semibold">{drawId ? 'Custom Terms & Conditions (this draw only)' : membershipId ? 'Custom Terms & Conditions (this package only)' : isDraftMode ? (context === 'membership' ? 'Terms & Conditions (copy for new package)' : 'Terms & Conditions (copy for new draw)') : 'Default Terms & Conditions'}</h1>
           {!isEditing && (
             <button className="btn btn-sm" onClick={() => setIsEditing(true)}>Edit</button>
           )}

@@ -1,10 +1,12 @@
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import question from '../../assets/question.svg';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { paymentOtpRequest } from '../../api/otp';
 import { refundPaymentRequest } from '../../api/payment';
 import { FaCheck, FaExclamation, FaRegPaperPlane, FaXmark } from 'react-icons/fa6';
 import { PATHS } from '../../routes/routes';
+import { getCurrentPromo, getDrawInfoById } from '../../api/draws';
+import { getNowInTimezone } from '../../utils/validation';
 
 const GRID_KEY_CLASS = 'col-span-1 text-sm text-left font-medium text-secondary';
 const GRID_VALUE_CLASS = 'col-span-2 text-sm text-right font-bold';
@@ -31,12 +33,60 @@ const Payment = () => {
     const membershipTireId = searchParams.get('membershipTireId');
     const paymentId = searchParams.get('paymentId');
     const email = searchParams.get('email');
+    const entriesCreated = searchParams.get('entriesCreated');
+    const multiplier = searchParams.get('multiplier');
+    const baseEntries = searchParams.get('baseEntries');
+
+    // Membership success fallback calculations to avoid 0 entries
+    const memMultiplier = Math.max(1, Number(multiplier || 1));
+    const memBaseEntries = Number(baseEntries);
+    const effectiveBaseEntries = !isNaN(memBaseEntries) && memBaseEntries > 0 ? memBaseEntries : 1;
+    const memEntriesCreated = Number(entriesCreated);
+    const effectiveEntriesCreated = !isNaN(memEntriesCreated) && memEntriesCreated > 0
+        ? memEntriesCreated
+        : (effectiveBaseEntries * memMultiplier);
 
     const [otp, setOtp] = useState('');
     const [isOtpSent, setIsOtpSent] = useState(false);
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState<boolean>(false);
     const [isCanceled, setIsCanceled] = useState<boolean>(false);
+    const [promo, setPromo] = useState<{ multiplier: number; extras?: number; totalEntries?: number } | null>(null);
+
+    useEffect(() => {
+        // On success, if it's a draw payment and we know count + drawID, fetch promo breakdown to display
+        if (status === 'success' && drawID && count) {
+            (async () => {
+                try {
+                    // Primary: server-side calculation
+                    const { data } = await getCurrentPromo(drawID, Number(count));
+                    if (data && typeof data.multiplier === 'number') {
+                        setPromo({ multiplier: data.multiplier, extras: data.extras, totalEntries: data.totalEntries });
+                        return;
+                    }
+                } catch (_) {
+                    // ignore and fallback
+                }
+
+                // Fallback: compute using draw timezone + promo periods so user sees correct local-based period
+                try {
+                    const res = await getDrawInfoById(drawID);
+                    const draw = res?.data || {};
+                    const tz: string | undefined = draw?.timezone;
+                    const nowLocal = getNowInTimezone(tz);
+                    const nowKey = String(nowLocal).slice(0, 16);
+                    const periods: Array<{ start: string; end: string; multiplier: number }> = Array.isArray(draw?.promoPeriods) ? draw.promoPeriods : [];
+                    const active = periods.find(p => (p.start || '').slice(0, 16) <= nowKey && nowKey < (p.end || '').slice(0, 16));
+                    const m = active?.multiplier ?? 1;
+                    const cnt = Number(count);
+                    const totalEntries = Number.isFinite(cnt) ? cnt * m : undefined;
+                    setPromo({ multiplier: m, extras: active ? (totalEntries ? totalEntries - cnt : undefined) : undefined, totalEntries });
+                } catch (_) {
+                    setPromo(null);
+                }
+            })();
+        }
+    }, [status, drawID, count]);
 
     const sendOtp = async () => {
         try {
@@ -102,8 +152,30 @@ const Payment = () => {
                                 }>
                                 {membershipTireId ? membershipTireId : drawID}
                             </p>
-                            <p className={GRID_KEY_CLASS}>{count && 'Tickets:'}</p>
-                            <p className={GRID_VALUE_CLASS}>{count && count}</p>
+                            <p className={GRID_KEY_CLASS}>
+                                {membershipTireId ? '' : (count && '')}
+                            </p>
+                            <p className={GRID_VALUE_CLASS}>
+                                {membershipTireId
+                                    ? `You got: ${effectiveEntriesCreated} subscriptions`
+                                    : (count && `You got: ${promo?.totalEntries ?? Number(count)} subscriptions`)}
+                            </p>
+                            {drawID && count && promo && promo.multiplier > 1 && (
+                                <>
+                                    <p className={GRID_KEY_CLASS}></p>
+                                    <p className={GRID_VALUE_CLASS + ' text-xs font-normal text-secondary'}>
+                                        {Number(count)} × ({promo.multiplier} Promo) = {promo?.totalEntries ?? Number(count) * (promo.multiplier || 1)}
+                                    </p>
+                                </>
+                            )}
+                            {membershipTireId && Number(multiplier) > 1 && (
+                                <>
+                                    <p className={GRID_KEY_CLASS}></p>
+                                    <p className={GRID_VALUE_CLASS + ' text-xs font-normal text-secondary'}>
+                                        {effectiveBaseEntries} × {memMultiplier} Promotional period = {effectiveEntriesCreated}
+                                    </p>
+                                </>
+                            )}
                         </div>
 
                         <button className="mt-7 btn btn-primary w-full"

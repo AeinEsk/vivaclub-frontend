@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { cardProps } from '../../@types/packageCard';
 import ConvertTextToList from '../convertTextToList/ConvertTextToList';
 import { dateConverter } from '../dateConverter/DateConverter';
@@ -14,13 +14,16 @@ const PackageCard: React.FC<cardProps> = ({
     price,
     purchaseFunc,
     purchase,
-    chanceOfWin,
+    numberOfTicket,
     deactivatedAt,
     drawDate,
     frequency,
     currency,
-    showCancelAlert = false
+    showCancelAlert = false,
+    termsLink,
+    entriesPreview
 }) => {
+    const [agree, setAgree] = useState(false);
     return (
         <div className="card w-full mb-4 shadow-xl py-5 px-5 rounded-2xl border border-border/30 bg-white">
             <div className="card-body p-0">
@@ -61,9 +64,9 @@ const PackageCard: React.FC<cardProps> = ({
                     <div className="flex flex-col items-start gap-2 bg-gray-50 p-5 rounded-xl">
                         <div className="flex items-center gap-2 text-base text-primary">
                             <FaChartLine />
-                            <span>Win Chance</span>
+                            <span>Number of Entries</span>
                         </div>
-                        <div className="">{chanceOfWin}</div>
+                        <div className="">{numberOfTicket}</div>
                     </div>
 
                     <div className="flex flex-col items-start gap-2 bg-gray-50 p-5 rounded-xl">
@@ -99,19 +102,44 @@ const PackageCard: React.FC<cardProps> = ({
 
                 {purchase ? (
                     <div className="card-actions justify-center content-center mt-6">
+                        {entriesPreview && (
+                            <div className="w-full mb-2 text-xs text-secondary text-right">
+                                {entriesPreview}
+                            </div>
+                        )}
+                        {/* Terms & Conditions agreement */}
+                        <div className="form-control w-full">
+                            <label className="flex gap-2 cursor-pointer items-start">
+                                <input
+                                    type="checkbox"
+                                    className="checkbox checkbox-primary checkbox-sm rounded-sm mt-0.5"
+                                    checked={agree}
+                                    onChange={(e) => setAgree(e.target.checked)}
+                                />
+                                <span className="label-text text-secondary ml-1 text-xs">
+                                    I agree to the{' '}
+                                    <a
+                                        href={termsLink || '/terms'}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary hover:underline"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        Terms and Conditions
+                                    </a>
+                                </span>
+                            </label>
+                        </div>
                         <button
                             className="btn btn-primary w-full text-sm font-medium text-white"
-                            onClick={purchaseFunc}>
+                            onClick={purchaseFunc}
+                            disabled={!agree}
+                        >
                             Purchase Now
                         </button>
                         <div className="mt-2 text-xs">
                             <p className="text-secondary">Cancel anytime</p>
-                            <a
-                                href="/terms"
-                                target="_blank"
-                                className="block mt-1 text-primary">
-                                Terms and Conditions
-                            </a>
+                            
                         </div>
                     </div>
                 ) : (
