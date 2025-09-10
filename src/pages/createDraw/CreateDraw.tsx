@@ -479,7 +479,7 @@ const CreateDraw = () => {
                                     onClick={() => {
                                         const runAtVal = watch('runAt');
                                         const timezone = watch('timezone');
-                                        const nowIso = getNowInTimezone(timezone);
+                                        // const nowIso = getNowInTimezone(timezone);
                                         // Default start 15 minutes from now to avoid immediate past on submit
                                         const nowPlus15 = (() => {
                                             const d = new Date();

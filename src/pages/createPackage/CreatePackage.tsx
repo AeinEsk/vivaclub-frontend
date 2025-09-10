@@ -370,13 +370,13 @@ const CreatePackage = () => {
             if (!packageId) {
                 console.log('No packageId, loading default/global terms to prefill');
                 try {
-                    setLoadingTerms(true);
+                    setTermsModalLoading(true);
                     const { data } = await fetchTerms();
                     setPackageData((prev) => ({ ...prev, termsHtml: data?.html || '' }));
                 } catch (e) {
                     // ignore
                 } finally {
-                    setLoadingTerms(false);
+                    setTermsModalLoading(false);
                 }
                 return;
             }
@@ -606,7 +606,6 @@ const CreatePackage = () => {
                                         onClick={() => {
                                             const drawDateVal = packageData.drawDate;
                                             const timezone = packageData.timezone;
-                                            const nowIso = getNowInTimezone(timezone);
                                             // Default start 15 minutes from now
                                             const nowPlus15 = (() => {
                                                 const d = new Date();
